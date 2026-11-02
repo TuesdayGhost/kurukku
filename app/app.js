@@ -7,6 +7,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_KEY, TIMEZONE } from "./config.js";
 import * as S from "./schedule.js";
 import * as sound from "./sound.js";
+import * as W from "./weather.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -15,6 +16,8 @@ const $app = document.getElementById("app");
 
 const LIVING_IDLE_MS = 90 * 1000;      // 居間：最後の操作からこの時間で表示画面に戻る（仮置き）
 const REFRESH_MS = 5 * 60 * 1000;      // 念のための定期再読込
+const WEATHER_MS = 30 * 60 * 1000;     // 天気の更新間隔
+const WEATHER_STALE_MS = 2 * 60 * 60 * 1000; // これより古い天気は取得時刻を目立たせる
 const PRESETS_PATIENT = ["朝ごはん", "お昼ごはん", "夕ごはん", "お薬", "デイ", "お風呂"];
 const PRESETS_FAMILY = ["仕事", "買い物", "病院", "リハビリ", "出かける"];
 
@@ -24,6 +27,7 @@ const state = {
   household: null,
   people: [], schedules: [], exceptions: [], messages: [], members: [], invites: [],
   lastSync: null, syncError: null, rt: "",
+  weather: null, weatherError: null, weatherAt: 0, weatherLoc: "",
   today: S.nowParts(new Date(), TIMEZONE).date,
   view: "", lastInvite: null,
 };
@@ -75,6 +79,7 @@ async function boot() {
   await loadMember();
   setInterval(tick, 1000);
   setInterval(refresh, REFRESH_MS);
+  setInterval(() => updateWeather(), 60 * 1000);
   addEventListener("hashchange", mount);
   addEventListener("online", refresh);
   document.addEventListener("visibilitychange", () => {
@@ -118,6 +123,7 @@ async function refresh() {
       state.people ||= []; state.schedules ||= []; state.exceptions ||= []; state.messages ||= [];
       if (role() === "family") { state.members = res[5].data || []; state.invites = res[6].data || []; }
       state.lastSync = new Date();
+      updateWeather();
       state.syncError = null;
     } catch (e) {
       state.syncError = errMsg(e);
@@ -136,7 +142,7 @@ let channel = null;
 function startRealtime() {
   if (channel || !state.member) return;
   channel = sb.channel(`kurukku-${state.member.household_id}`);
-  for (const table of ["schedules", "schedule_exceptions", "messages", "people"]) {
+  for (const table of ["schedules", "schedule_exceptions", "messages", "people", "households"]) {
     channel.on("postgres_changes", { event: "*", schema: "public", table }, refreshSoon);
   }
   channel.subscribe((status) => { state.rt = status; if (status === "SUBSCRIBED") refreshSoon(); });
@@ -175,6 +181,7 @@ function fill() {
   if (v === "messages") { setHTML($("msg-from"), msgFromChipsHTML()); setHTML($("msg-list"), msgListHTML()); }
   if (v === "settings") { setHTML($("people-list"), peopleListHTML()); setHTML($("member-list"), memberListHTML()); setHTML($("invite-list"), inviteListHTML()); }
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
+  const wl = $("weather-label"); if (wl) wl.textContent = state.household?.weather_label || "未設定（天気は表示されません）";
 }
 
 // ---------- 毎秒の処理：時計・通知 ----------
@@ -245,6 +252,43 @@ async function keepAwake() {
   try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_) { wakeLock = null; }
 }
 
+// ---------- 天気 ----------
+let weatherBusy = false;
+async function updateWeather(force = false) {
+  const h = state.household;
+  if (!h || h.weather_lat == null || h.weather_lon == null || weatherBusy) return;
+  const loc = `${h.weather_lat},${h.weather_lon}`;
+  if (!force && loc === state.weatherLoc && Date.now() - state.weatherAt < WEATHER_MS) return;
+  weatherBusy = true;
+  try {
+    const { data, error } = await W.fetchWeather(h.weather_lat, h.weather_lon);
+    state.weather = data;
+    state.weatherError = error;
+    state.weatherLoc = loc;
+    // 失敗したときは5分後にもう一度試す
+    state.weatherAt = error ? Date.now() - WEATHER_MS + 5 * 60 * 1000 : Date.now();
+  } finally {
+    weatherBusy = false;
+  }
+  tick();
+}
+
+function weatherHTML(np) {
+  const h = state.household;
+  if (!h || h.weather_lat == null) return "";
+  const w = state.weather;
+  if (!w || w.date !== np.date) {
+    return `<p class="w-main w-none">天気：まだ取得できていません</p>`;
+  }
+  const r = (v) => (v == null ? "－" : Math.round(v));
+  const old = state.weatherError || Date.now() - w.fetchedAt > WEATHER_STALE_MS;
+  const sub = [];
+  if (w.now != null) sub.push(`いまの外の気温 ${r(w.now)}℃`);
+  if (w.pop != null) sub.push(`雨の確率 ${r(w.pop)}%`);
+  return `<p class="w-main">${esc(w.text || "天気")}<span class="w-temp">最高 ${r(w.max)}℃／最低 ${r(w.min)}℃</span></p>
+    <p class="w-sub">${sub.map(esc).join("　")}<span class="${old ? "w-old" : ""}">（${jstHM(new Date(w.fetchedAt))} の情報${old ? "・更新できていません" : ""}）</span></p>`;
+}
+
 // ---------- 表示画面 ----------
 function viewDisplay() {
   return `
@@ -253,6 +297,7 @@ function viewDisplay() {
       <p class="greet" id="greet"></p>
       <p class="date num" id="date"></p>
       <p class="weekday" id="wday"></p>
+      <div class="weather" id="weather"></div>
       <p class="clock num" id="clock"></p>
     </section>
     <section class="plan" id="plan" aria-label="今日の予定"></section>
@@ -270,6 +315,7 @@ function updateDisplay(np, occ, active) {
   $("greet").textContent = hour >= 4 && hour < 11 ? "おはようございます" : "";
   $("date").textContent = `${np.m}月${np.d}日`;
   $("wday").textContent = `${S.WEEKDAYS[np.dow]}曜日`;
+  setHTML($("weather"), weatherHTML(np));
   $("clock").textContent = np.time.slice(0, 5);
 
   const now = np.time;
@@ -495,6 +541,7 @@ function msgFormHTML() {
     <section class="card"><h2>表示中・これから表示する知らせ</h2><ul class="list" id="msg-list"></ul></section>`;
 }
 let msgFrom = null;
+let placeResults = [];
 function msgFromChipsHTML() {
   const fam = state.people.filter((p) => !p.is_patient);
   if (!msgFrom || !person(msgFrom)) msgFrom = fam[0]?.id || null;
@@ -533,6 +580,14 @@ function settingsHTML() {
     <div id="invite-new"></div>
     <h2>使われていないコード</h2><ul class="list" id="invite-list"></ul>
     <h2>登録済み</h2><ul class="list" id="member-list"></ul>
+  </section>
+  <section class="card"><h2>天気の地域</h2>
+    <p class="hint">いまの設定：<strong id="weather-label"></strong></p>
+    <form id="place-form" class="row">
+      <label class="field"><span>地名で探す</span><input type="text" id="place-q" maxlength="30" placeholder="例：泉区、仙台" required></label>
+      <button class="btn" type="submit">探す</button>
+    </form>
+    <ul class="list" id="place-results"></ul>
   </section>
   <section class="card"><h2>このスマホ</h2>
     <p class="hint">${esc(state.session.user.email)}（${esc(state.member.display_name)}）</p>
@@ -586,6 +641,16 @@ $app.addEventListener("click", async (e) => {
   if (act === "pick-wd") { const d = Number(btn.dataset.v); draft.weekdays.has(d) ? draft.weekdays.delete(d) : draft.weekdays.add(d); renderChips(); }
   if (act === "pick-wd-all") { draft.weekdays = new Set([0, 1, 2, 3, 4, 5, 6]); renderChips(); }
   if (act === "now") { $("add-start").value = S.nowParts(new Date(), TIMEZONE).time.slice(0, 5); syncNotifyDefaults(); }
+  if (act === "place-pick") guarded(btn, async () => {
+    const p = placeResults[Number(btn.dataset.i)];
+    if (!p) return;
+    const { error } = await sb.from("households").update({ weather_label: p.label, weather_lat: p.lat, weather_lon: p.lon }).eq("id", state.member.household_id);
+    if (error) throw error;
+    setHTML($("place-results"), "");
+    toast(`天気の地域を「${p.label}」にしました`);
+    await refresh();
+    updateWeather(true);
+  });
   if (act === "msg-from") { msgFrom = id; setHTML($("msg-from"), msgFromChipsHTML()); }
   if (act === "cancel-day") guarded(btn, async () => {
     const { error } = await sb.from("schedule_exceptions").insert({ schedule_id: id, on_date: state.today });
@@ -644,6 +709,13 @@ $app.addEventListener("submit", async (e) => {
   });
   if (form.id === "add-form") return guarded(btn, submitSchedule);
   if (form.id === "msg-form") return guarded(btn, submitMessage);
+  if (form.id === "place-form") return guarded(btn, async () => {
+    const q = $("place-q").value.trim();
+    if (!q) throw new Error("地名を入れてください");
+    placeResults = await W.searchPlace(q);
+    setHTML($("place-results"), placeResults.map((p, i) => `<li><div class="main">${esc(p.label)}</div><button class="btn small" type="button" data-act="place-pick" data-i="${i}">これにする</button></li>`).join("")
+      || `<li class="hint">見つかりませんでした。市や区の名前で試してください。</li>`);
+  });
   if (form.id === "person-form") return guarded(btn, async () => {
     const name = $("person-name").value.trim();
     if (!name) throw new Error("名前を入れてください");
