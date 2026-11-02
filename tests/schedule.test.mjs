@@ -74,3 +74,22 @@ test("知らせは表示期間中だけ", () => {
   assert.equal(S.activeMessages([m], Date.parse("2026-11-02T06:00:00Z")).length, 1);
   assert.equal(S.activeMessages([m], Date.parse("2026-11-02T08:00:00Z")).length, 0);
 });
+
+test("読み上げの時刻は話し言葉で", () => {
+  assert.equal(S.spokenTime("18:30:00"), "6時半");
+  assert.equal(S.spokenTime("09:15"), "9時15分");
+  assert.equal(S.spokenTime("12:00"), "12時");
+  assert.equal(S.spokenTime("00:00"), "12時");
+});
+
+test("お知らせの読み上げ（11/2 決定の案2）", () => {
+  const dad = { name: "お父さん", is_patient: true };
+  const mom = { name: "母", is_patient: false };
+  const dinner = { title: "夕ごはん", start_time: "18:30:00" };
+  assert.equal(S.noticeSpeech(dinner, dad, "ぽーちゃん"), "くるっくー。ぽーちゃんです。お父さん、6時半から夕ごはんです。");
+  assert.equal(S.noticeSpeech(dinner, dad, ""), "くるっくー。お父さん、6時半から夕ごはんです。");
+  assert.equal(S.noticeSpeech({ title: "お薬" }, dad, "ぽーちゃん"), "くるっくー。ぽーちゃんです。お父さん、お薬です。");
+  const shop = { title: "買い物", start_time: "15:00:00", end_time: "16:30:00" };
+  assert.equal(S.noticeSpeech(shop, mom, "ぽーちゃん"), "くるっくー。ぽーちゃんです。母は、3時から買い物です。4時半に帰ってきます。");
+  assert.equal(S.messageSpeech({ body: "6時半ごろ帰ります" }, { name: "葵依" }, "ぽーちゃん"), "くるっくー。ぽーちゃんです。葵依から、お知らせです。6時半ごろ帰ります");
+});

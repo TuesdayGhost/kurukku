@@ -181,6 +181,8 @@ function fill() {
   if (v === "messages") { setHTML($("msg-from"), msgFromChipsHTML()); setHTML($("msg-list"), msgListHTML()); }
   if (v === "settings") { setHTML($("people-list"), peopleListHTML()); setHTML($("member-list"), memberListHTML()); setHTML($("invite-list"), inviteListHTML()); }
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
+  const pn = $("pigeon-name"); if (pn && !pn.dataset.touched) pn.value = pigeonName();
+  const pp = $("pigeon-preview"); if (pp) pp.textContent = pigeonName() ? `${pigeonName()}です。` : "";
   const wl = $("weather-label"); if (wl) wl.textContent = state.household?.weather_label || "未設定（天気は表示されません）";
 }
 
@@ -198,11 +200,9 @@ function tick() {
   }
 }
 
+const pigeonName = () => (state.household?.pigeon_name || "").trim();
 function speechText(s) {
-  const p = person(s.person_id);
-  const who = p && !p.is_patient ? `${p.name}、` : "";
-  const when = s.start_time ? `、${S.speechTime(s.start_time)}です。` : "です。";
-  return `${who}${s.title}${when}${s.display_text ? s.display_text : ""}`;
+  return S.noticeSpeech(s, person(s.person_id), pigeonName());
 }
 
 function handleNotices(active, np) {
@@ -220,7 +220,7 @@ function handleNotices(active, np) {
     if (m.with_sound && !lsGet(soundKey) && sound.isReady()) {
       lsSet(soundKey, "1");
       const p = person(m.person_id);
-      sound.announce({ times: 1, text: `${p ? p.name + "から、" : ""}お知らせです。${m.body}` });
+      sound.announce({ times: 1, text: S.messageSpeech(m, p, pigeonName()) });
     }
   }
 }
@@ -353,7 +353,7 @@ function updateDisplay(np, occ, active) {
     setHTML($("notice"), `<div class="notice ${active.length > 1 ? "many" : ""}" role="alert">
       <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${np.time.slice(0, 5)}</span></div>
       <div class="items">${items}</div>
-      <div class="pigeon"><span>くるっくー　お知らせです</span>${sound.isReady() ? "" : `<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}</div></div>`);
+      <div class="pigeon"><span>${pigeonName() ? `${esc(pigeonName())}からのお知らせ` : "くるっくー　お知らせです"}</span>${sound.isReady() ? "" : `<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}</div></div>`);
   } else {
     setHTML($("notice"), "");
   }
@@ -581,6 +581,13 @@ function settingsHTML() {
     <h2>使われていないコード</h2><ul class="list" id="invite-list"></ul>
     <h2>登録済み</h2><ul class="list" id="member-list"></ul>
   </section>
+  <section class="card"><h2>鳩の名前</h2>
+    <form id="pigeon-form" class="row">
+      <label class="field"><span>名前（12文字まで。空欄なら名乗りません）</span><input type="text" id="pigeon-name" maxlength="12" placeholder="例：ぽーちゃん"></label>
+      <button class="btn" type="submit">保存</button>
+    </form>
+    <p class="hint">お知らせのとき「くるっくー。<span id="pigeon-preview"></span>お父さん、6時半から夕ごはんです。」のように名乗ります。</p>
+  </section>
   <section class="card"><h2>天気の地域</h2>
     <p class="hint">いまの設定：<strong id="weather-label"></strong></p>
     <form id="place-form" class="row">
@@ -631,7 +638,7 @@ $app.addEventListener("click", async (e) => {
   if (!btn) return;
   const act = btn.dataset.act, id = btn.dataset.id;
   if (act === "unlock") { const ok = await sound.unlock(); toast(ok ? "音を出せるようになりました" : "音を有効にできませんでした", !ok); tick(); }
-  if (act === "unlock-test") { await sound.unlock(); sound.announce({ times: 1, text: "くるっくー。音のテストです。" }); }
+  if (act === "unlock-test") { await sound.unlock(); sound.announce({ times: 1, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}音のテストです。` }); }
   if (act === "sheet-close") $("sheet").innerHTML = "";
   if (act === "logout-ask") { if (!needsConfirm(btn, "もう一度押すとログアウト")) { stopRealtime(); await sb.auth.signOut(); location.hash = ""; } }
   if (act === "logout") { stopRealtime(); await sb.auth.signOut(); location.hash = ""; }
@@ -690,6 +697,7 @@ function syncNotifyDefaults() {
     if (!$("add-nuntil").value) $("add-nuntil").value = S.shiftTime(start, 5);
   }
 }
+$app.addEventListener("input", (e) => { if (e.target.id === "pigeon-name") e.target.dataset.touched = "1"; });
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults();
 });
@@ -709,6 +717,14 @@ $app.addEventListener("submit", async (e) => {
   });
   if (form.id === "add-form") return guarded(btn, submitSchedule);
   if (form.id === "msg-form") return guarded(btn, submitMessage);
+  if (form.id === "pigeon-form") return guarded(btn, async () => {
+    const name = $("pigeon-name").value.trim();
+    const { error } = await sb.from("households").update({ pigeon_name: name || null }).eq("id", state.member.household_id);
+    if (error) throw error;
+    delete $("pigeon-name").dataset.touched;
+    toast(name ? `鳩の名前を「${name}」にしました` : "鳩の名前を消しました");
+    await refresh();
+  });
   if (form.id === "place-form") return guarded(btn, async () => {
     const q = $("place-q").value.trim();
     if (!q) throw new Error("地名を入れてください");

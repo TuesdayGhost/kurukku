@@ -117,3 +117,40 @@ export function repeatLabel(s) {
   if (days.length === 7) return "毎日";
   return "毎週 " + days.map((d) => WEEKDAYS[d]).join("・");
 }
+
+/** 読み上げ用の話し言葉の時刻 "6時半" / "9時15分" / "12時"（午前午後は言わない） */
+export function spokenTime(t) {
+  const [h24, m] = normTime(t).split(":").map(Number);
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  if (m === 0) return `${h}時`;
+  if (m === 30) return `${h}時半`;
+  return `${h}時${m}分`;
+}
+
+function intro(pigeonName) {
+  return pigeonName ? `くるっくー。${pigeonName}です。` : "くるっくー。";
+}
+
+/**
+ * お知らせの読み上げ文（11/2 決定：時刻を先に言う）
+ *   本人：「くるっくー。ぽーちゃんです。お父さん、6時半から夕ごはんです。」
+ *   家族：「くるっくー。ぽーちゃんです。母は買い物です。4時半に帰ってきます。」
+ */
+export function noticeSpeech(s, person, pigeonName = "") {
+  const name = person?.name || "";
+  const extra = s.display_text ? s.display_text : "";
+  if (!person || person.is_patient) {
+    const call = name ? `${name}、` : "";
+    const body = s.start_time ? `${spokenTime(s.start_time)}から${s.title}です。` : `${s.title}です。`;
+    return `${intro(pigeonName)}${call}${body}${extra}`;
+  }
+  let body = s.start_time ? `${name}は、${spokenTime(s.start_time)}から${s.title}です。` : `${name}は、${s.title}です。`;
+  if (s.end_time) body += `${spokenTime(s.end_time)}に帰ってきます。`;
+  return `${intro(pigeonName)}${body}${extra}`;
+}
+
+/** 家族からの知らせの読み上げ文 */
+export function messageSpeech(m, person, pigeonName = "") {
+  const from = person ? `${person.name}から、` : "";
+  return `${intro(pigeonName)}${from}お知らせです。${m.body}`;
+}
