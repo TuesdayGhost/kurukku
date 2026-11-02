@@ -1,0 +1,423 @@
+<title>くるっくー 音のテスト</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Shippori+Mincho:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column of numbered test steps (the order is the real procedure), log at the bottom */
+:root {
+  --bg: #eef0f2;          /* pigeon-feather grey */
+  --surface: #ffffff;
+  --fg: #22262b;
+  --muted: #5d6670;
+  --line: #cfd5db;
+  --accent: #3f6b5c;      /* pigeon-neck green */
+  --accent-2: #6a4f7d;    /* pigeon-neck violet */
+  --ok: #2f7a45;
+  --warn: #9a6a00;
+  --bad: #b03a2e;
+  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1e22; --surface: #24282d; --fg: #e8eaed; --muted: #a2abb5; --line: #3a4048;
+    --accent: #7fbfa8; --accent-2: #b89bcc; --ok: #6cc489; --warn: #e0b04a; --bad: #ef8a7e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1e22; --surface: #24282d; --fg: #e8eaed; --muted: #a2abb5; --line: #3a4048;
+  --accent: #7fbfa8; --accent-2: #b89bcc; --ok: #6cc489; --warn: #e0b04a; --bad: #ef8a7e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+main { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-size: 1.9rem; line-height: 1.3; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; }
+h2 { font-size: 1.1rem; margin: 0; display: flex; gap: 10px; align-items: baseline; }
+h2 .n { font-family: var(--font-mono); color: var(--accent-2); font-weight: 500; }
+p { margin: 0; }
+.hint { color: var(--muted); font-size: 0.92rem; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button {
+  font: inherit; font-weight: 700; min-height: 52px; padding: 10px 18px;
+  border-radius: 8px; border: 1.5px solid var(--accent); background: transparent; color: var(--accent);
+  cursor: pointer;
+}
+button.primary { background: var(--accent); color: var(--surface); }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+select, input[type="range"] { font: inherit; min-height: 44px; }
+select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); max-width: 100%; }
+label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status { font-weight: 700; }
+.s-ok { color: var(--ok); } .s-warn { color: var(--warn); } .s-bad { color: var(--bad); }
+dl.env { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 0.92rem; }
+dl.env dt { color: var(--muted); }
+dl.env dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.5rem; }
+pre#log {
+  margin: 0; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.55;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+  max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<main>
+  <header>
+    <h1>くるっくー 音のテスト</h1>
+    <p class="lede">常設端末で、鳩の音と読み上げが鳴るか、放っておいても時間どおりに鳴るかを確かめます。1から順に試してください。</p>
+  </header>
+
+  <section aria-labelledby="h-env">
+    <h2 id="h-env"><span class="n">0</span>この端末</h2>
+    <dl class="env" id="env"></dl>
+  </section>
+
+  <section aria-labelledby="h-unlock">
+    <h2 id="h-unlock"><span class="n">1</span>音を使えるようにする</h2>
+    <p class="hint">ブラウザは、人が一度画面に触れるまで音を出させません。設置するときに家族が一回押す想定のボタンです。</p>
+    <div class="row">
+      <button class="primary" id="unlock">音を有効にする</button>
+      <span class="status" id="unlock-status">まだ有効にしていません</span>
+    </div>
+    <label for="volume">音量 <input type="range" id="volume" min="0" max="100" value="80"> <span id="volume-val">80</span></label>
+    <p class="hint">iPhone・iPadでは、この音量つまみが効かないことがあります。端末本体の音量で調節してください。</p>
+  </section>
+
+  <section aria-labelledby="h-now">
+    <h2 id="h-now"><span class="n">2</span>今すぐ鳴らす</h2>
+    <label for="engine">鳴らし方
+      <select id="engine">
+        <option value="webaudio">Web Audio（ページ内で合成）</option>
+        <option value="audio">audio要素（音声ファイル再生）</option>
+      </select>
+    </label>
+    <div class="row">
+      <button id="chime1" disabled>チャイム1回</button>
+      <button id="chime2" disabled>チャイム2回</button>
+      <button id="speak" disabled>読み上げ</button>
+      <button id="full" disabled>通知の流れ</button>
+    </div>
+    <label for="voice">声 <select id="voice"><option value="">（日本語の声を探しています）</option></select></label>
+    <p class="hint">「通知の流れ」は、チャイム2回のあとに「お昼ごはん、12時です」と読み上げます。iPhone・iPadはマナーモードのスイッチも切り替えて試してください。</p>
+  </section>
+
+  <section aria-labelledby="h-later">
+    <h2 id="h-later"><span class="n">3</span>放っておいて鳴るか</h2>
+    <p class="hint">押したら画面に触らずに待ちます。1分後や5分後は、画面が暗くなっても鳴るか、別のアプリを開いていても鳴るかも試せます。予定時刻から何秒遅れたかを記録に残します。</p>
+    <div class="row">
+      <button id="t10" disabled>10秒後</button>
+      <button id="t60" disabled>1分後</button>
+      <button id="t300" disabled>5分後</button>
+      <button id="tcancel" disabled>取り消す</button>
+    </div>
+    <p>次の音まで <span class="count" id="countdown">--:--</span></p>
+  </section>
+
+  <section aria-labelledby="h-wake">
+    <h2 id="h-wake"><span class="n">4</span>画面を点けたままにする</h2>
+    <p class="hint">画面が自動で消えるのを、ページから止められるかを確かめます。オンにしたら端末を置いたまま、普段なら画面が消える時間より長く待ってください。</p>
+    <div class="row">
+      <button id="wake">点けたままにする</button>
+      <span class="status" id="wake-status">オフ</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-log">
+    <h2 id="h-log"><span class="n">5</span>記録</h2>
+    <p class="hint">終わったら「記録をコピー」を押して、会話に貼り付けてください。端末名がわかるように一言添えてもらえると助かります。</p>
+    <div class="row">
+      <button id="copy">記録をコピー</button>
+      <span class="status" id="copy-status"></span>
+    </div>
+    <pre id="log" aria-live="polite"></pre>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const lines = [];
+  const jst = (d = new Date()) => d.toLocaleTimeString("ja-JP", { timeZone: "Asia/Tokyo", hour12: false });
+  function log(msg) {
+    lines.push(`${jst()} ${msg}`);
+    $("log").textContent = lines.join("\n");
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+
+  // ---- 0. environment ----
+  const env = {
+    "ブラウザ情報": navigator.userAgent,
+    "Web Audio": (window.AudioContext || window.webkitAudioContext) ? "あり" : "なし",
+    "読み上げ": "speechSynthesis" in window ? "あり" : "なし",
+    "画面点灯維持": "wakeLock" in navigator ? "あり" : "なし",
+    "画面サイズ": `${screen.width}×${screen.height}（表示 ${innerWidth}×${innerHeight}、倍率 ${devicePixelRatio}）`,
+  };
+  for (const [k, v] of Object.entries(env)) {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    $("env").append(dt, dd);
+  }
+  log("ページを開きました");
+  for (const [k, v] of Object.entries(env)) log(`[端末] ${k}: ${v}`);
+
+  // ---- sound synthesis ----
+  const RATE = 22050;
+  const NOTES = [ // two-tone bell, like a soft doorbell
+    { f: 659.25, t: 0.0 },
+    { f: 523.25, t: 0.5 },
+  ];
+  const CHIME_LEN = 2.4;
+  let volume = 0.8;
+
+  function synthSamples() {
+    const n = Math.floor(RATE * CHIME_LEN);
+    const out = new Float32Array(n);
+    for (const note of NOTES) {
+      const start = Math.floor(note.t * RATE);
+      for (let i = start; i < n; i++) {
+        const t = (i - start) / RATE;
+        const env = Math.min(1, t / 0.008) * Math.exp(-t * 2.6);
+        out[i] += 0.32 * env * (Math.sin(2 * Math.PI * note.f * t) + 0.25 * Math.sin(2 * Math.PI * note.f * 2 * t) + 0.08 * Math.sin(2 * Math.PI * note.f * 3 * t));
+      }
+    }
+    return out;
+  }
+  function wavDataUri(samples) {
+    const buf = new ArrayBuffer(44 + samples.length * 2);
+    const v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); str(8, "WAVE");
+    str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, RATE, true); v.setUint32(28, RATE * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7fff, true);
+    let bin = ""; const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return "data:audio/wav;base64," + btoa(bin);
+  }
+  const samples = synthSamples();
+  const wavUri = wavDataUri(samples);
+
+  let ctx = null;
+  let audioEl = null;
+  let unlocked = false;
+
+  async function playWebAudio() {
+    if (!ctx) throw new Error("Web Audioが未準備です");
+    if (ctx.state !== "running") { await ctx.resume(); }
+    if (ctx.state !== "running") throw new Error(`Web Audioの状態: ${ctx.state}`);
+    const b = ctx.createBuffer(1, samples.length, RATE);
+    b.copyToChannel(samples, 0);
+    const src = ctx.createBufferSource(); src.buffer = b;
+    const g = ctx.createGain(); g.gain.value = volume;
+    src.connect(g).connect(ctx.destination);
+    src.start();
+    return new Promise((r) => { src.onended = r; });
+  }
+  async function playAudioEl() {
+    if (!audioEl) throw new Error("audio要素が未準備です");
+    audioEl.pause(); audioEl.currentTime = 0; audioEl.volume = volume; audioEl.muted = false;
+    await audioEl.play();
+    return new Promise((r) => { audioEl.onended = r; setTimeout(r, CHIME_LEN * 1000 + 300); });
+  }
+  async function chime(label) {
+    const engine = $("engine").value;
+    try {
+      await (engine === "webaudio" ? playWebAudio() : playAudioEl());
+      log(`[音] ${label}: 再生しました（${engine === "webaudio" ? "Web Audio" : "audio要素"}）`);
+      return true;
+    } catch (e) {
+      log(`[音] ${label}: 失敗 ${e && e.name ? e.name + " " : ""}${e && e.message ? e.message : e}`);
+      return false;
+    }
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function chimeTwice(label) {
+    await chime(label + "（1回目）");
+    await sleep(800);
+    await chime(label + "（2回目）");
+  }
+
+  // ---- speech ----
+  let jaVoices = [];
+  function loadVoices() {
+    if (!("speechSynthesis" in window)) return;
+    const all = speechSynthesis.getVoices();
+    jaVoices = all.filter((v) => /^ja/i.test(v.lang));
+    const sel = $("voice");
+    const prev = sel.value;
+    sel.innerHTML = "";
+    if (!jaVoices.length) {
+      const o = document.createElement("option"); o.value = ""; o.textContent = all.length ? "日本語の声が見つかりません（既定の声を使います）" : "（声を読み込み中）";
+      sel.append(o);
+    } else {
+      jaVoices.forEach((v, i) => {
+        const o = document.createElement("option"); o.value = String(i);
+        o.textContent = `${v.name}${v.localService ? "" : "（ネット経由）"}`;
+        sel.append(o);
+      });
+      if (prev && Number(prev) < jaVoices.length) sel.value = prev;
+    }
+    if (all.length) log(`[声] 全${all.length}件、日本語${jaVoices.length}件: ${jaVoices.map((v) => v.name).join(" / ") || "なし"}`);
+  }
+  if ("speechSynthesis" in window) {
+    loadVoices();
+    speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+  }
+  function speak(text, label) {
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) { log(`[声] ${label}: この端末は読み上げに対応していません`); return resolve(false); }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP"; u.rate = 0.9; u.volume = volume;
+      const v = jaVoices[Number($("voice").value)];
+      if (v) u.voice = v;
+      let started = false;
+      u.onstart = () => { started = true; };
+      u.onend = () => { log(`[声] ${label}: 読み上げました${v ? "（" + v.name + "）" : ""}`); resolve(true); };
+      u.onerror = (e) => { log(`[声] ${label}: 失敗 ${e.error || ""}`); resolve(false); };
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+      setTimeout(() => { if (!started) { log(`[声] ${label}: 8秒たっても始まりませんでした`); resolve(false); } }, 8000);
+    });
+  }
+  async function notifyFlow(label) {
+    await chimeTwice(label);
+    await sleep(500);
+    await speak("お昼ごはん、12時です。", label);
+  }
+
+  // ---- 1. unlock ----
+  $("unlock").addEventListener("click", async () => {
+    try {
+      if (navigator.audioSession) { try { navigator.audioSession.type = "playback"; log("[準備] audioSessionをplaybackにしました（マナーモードでも鳴らす設定）"); } catch (_) {} }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        if (!ctx) ctx = new AC();
+        await ctx.resume();
+        // play a silent buffer inside the gesture
+        const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, RATE); s.connect(ctx.destination); s.start();
+        ctx.onstatechange = () => log(`[準備] Web Audioの状態が ${ctx.state} に変わりました`);
+        log(`[準備] Web Audio: ${ctx.state}`);
+      }
+      if (!audioEl) { audioEl = new Audio(wavUri); audioEl.preload = "auto"; }
+      try {
+        audioEl.muted = true; await audioEl.play(); audioEl.pause(); audioEl.currentTime = 0; audioEl.muted = false;
+        log("[準備] audio要素: 再生できる状態です");
+      } catch (e) { log(`[準備] audio要素: 失敗 ${e.name || ""} ${e.message || e}`); }
+      if ("speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(" "); u.volume = 0; u.lang = "ja-JP";
+        speechSynthesis.speak(u);
+        loadVoices();
+      }
+      unlocked = true;
+      $("unlock-status").textContent = "有効にしました";
+      $("unlock-status").className = "status s-ok";
+      ["chime1", "chime2", "speak", "full", "t10", "t60", "t300", "tcancel"].forEach((id) => { $(id).disabled = false; });
+    } catch (e) {
+      $("unlock-status").textContent = "有効にできませんでした";
+      $("unlock-status").className = "status s-bad";
+      log(`[準備] 失敗 ${e.name || ""} ${e.message || e}`);
+    }
+  });
+  $("volume").addEventListener("input", (e) => { volume = Number(e.target.value) / 100; $("volume-val").textContent = e.target.value; });
+
+  // ---- 2. now ----
+  $("chime1").addEventListener("click", () => chime("今すぐ1回"));
+  $("chime2").addEventListener("click", () => chimeTwice("今すぐ2回"));
+  $("speak").addEventListener("click", () => speak("お昼ごはん、12時です。", "今すぐ"));
+  $("full").addEventListener("click", () => notifyFlow("今すぐ通知"));
+
+  // ---- 3. later (polling against wall clock, so throttling shows up as lateness) ----
+  let target = null, targetLabel = "";
+  function schedule(sec) {
+    target = Date.now() + sec * 1000;
+    targetLabel = sec >= 60 ? `${sec / 60}分後` : `${sec}秒後`;
+    log(`[予約] ${targetLabel}（${jst(new Date(target))}）に鳴らします。画面に触らずに待ってください`);
+  }
+  $("t10").addEventListener("click", () => schedule(10));
+  $("t60").addEventListener("click", () => schedule(60));
+  $("t300").addEventListener("click", () => schedule(300));
+  $("tcancel").addEventListener("click", () => { if (target) log("[予約] 取り消しました"); target = null; });
+  setInterval(() => {
+    if (!target) { $("countdown").textContent = "--:--"; return; }
+    const left = target - Date.now();
+    if (left > 0) {
+      const s = Math.ceil(left / 1000);
+      $("countdown").textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+      return;
+    }
+    const late = ((Date.now() - target) / 1000).toFixed(1);
+    const label = targetLabel;
+    target = null;
+    $("countdown").textContent = "--:--";
+    log(`[予約] ${label}の時刻です。遅れ ${late}秒、画面は${document.visibilityState === "visible" ? "表示中" : "非表示"}`);
+    notifyFlow(`予約${label}`);
+  }, 250);
+
+  // ---- 4. wake lock ----
+  let wantWake = false, wakeLock = null;
+  async function requestWake() {
+    if (!("wakeLock" in navigator)) { $("wake-status").textContent = "この端末では使えません"; $("wake-status").className = "status s-bad"; log("[画面] 点灯維持の機能がありません"); return; }
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+      $("wake-status").textContent = "オン"; $("wake-status").className = "status s-ok";
+      log("[画面] 点灯維持をオンにしました");
+      wakeLock.addEventListener("release", () => {
+        log("[画面] 点灯維持が解除されました");
+        if (wantWake) { $("wake-status").textContent = "解除されました（画面に戻ると再取得します）"; $("wake-status").className = "status s-warn"; }
+      });
+    } catch (e) {
+      $("wake-status").textContent = "オンにできませんでした"; $("wake-status").className = "status s-bad";
+      log(`[画面] 点灯維持に失敗 ${e.name || ""} ${e.message || e}`);
+    }
+  }
+  $("wake").addEventListener("click", async () => {
+    if (wantWake) {
+      wantWake = false; if (wakeLock) { try { await wakeLock.release(); } catch (_) {} wakeLock = null; }
+      $("wake").textContent = "点けたままにする"; $("wake-status").textContent = "オフ"; $("wake-status").className = "status";
+      log("[画面] 点灯維持をオフにしました");
+    } else {
+      wantWake = true; $("wake").textContent = "点灯維持をやめる"; await requestWake();
+    }
+  });
+
+  // ---- visibility / connectivity events ----
+  let hiddenAt = null;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); log("[状態] ページが非表示になりました（画面オフ・別アプリなど）"); }
+    else {
+      const d = hiddenAt ? ((Date.now() - hiddenAt) / 1000).toFixed(0) : "?";
+      log(`[状態] ページに戻りました（${d}秒ぶり）${ctx ? "／Web Audio: " + ctx.state : ""}`);
+      if (wantWake && (!wakeLock || wakeLock.released)) requestWake();
+    }
+  });
+  addEventListener("online", () => log("[状態] ネットにつながりました"));
+  addEventListener("offline", () => log("[状態] ネットが切れました"));
+
+  // ---- 5. copy ----
+  $("copy").addEventListener("click", async () => {
+    const text = lines.join("\n");
+    try { await navigator.clipboard.writeText(text); $("copy-status").textContent = "コピーしました"; $("copy-status").className = "status s-ok"; }
+    catch (_) {
+      const r = document.createRange(); r.selectNodeContents($("log"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      $("copy-status").textContent = "コピーできなかったので記録を選択しました。長押しでコピーしてください";
+      $("copy-status").className = "status s-warn";
+    }
+  });
+})();
+</script>
