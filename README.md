@@ -1,2 +1,2 @@
 # kurukku
-Claude hackathon Build
+Built with Claude: Japan 2026
