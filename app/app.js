@@ -363,12 +363,16 @@ function updateDisplay(np, occ, active) {
 }
 
 // 時計を長押しすると端末メニュー（設定は変えられない。音の有効化とログアウトだけ）
+// 父が偶然開かないよう5秒（11/3 決定）。暗証番号は付けない。
+const MENU_PRESS_MS = 5000;
 let pressTimer = null;
 addEventListener("pointerdown", (e) => {
   if (state.view !== "display" || !e.target.closest?.("#when")) return;
   clearTimeout(pressTimer);
-  pressTimer = setTimeout(openSheet, 2500);
+  pressTimer = setTimeout(openSheet, MENU_PRESS_MS);
 });
+// 長押し中にブラウザのメニューが出て止まらないようにする
+addEventListener("contextmenu", (e) => { if (state.view === "display") e.preventDefault(); });
 for (const ev of ["pointerup", "pointercancel", "pointerleave"]) addEventListener(ev, () => clearTimeout(pressTimer));
 function openSheet() {
   const roleName = { display: "見るだけ", living: "見る＋予定の追加", family: "家族" }[role()];

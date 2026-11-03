@@ -41,7 +41,7 @@ button { cursor: pointer; }
 @media (orientation: portrait) {
   .display { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "when" "plan" "news"; }
 }
-.when { grid-area: when; display: flex; flex-direction: column; justify-content: center; gap: 1vmin; min-width: 0; }
+.when { touch-action: none; -webkit-touch-callout: none; grid-area: when; display: flex; flex-direction: column; justify-content: center; gap: 1vmin; min-width: 0; }
 .greet { font-size: clamp(20px, 4vmin, 44px); color: var(--muted); margin: 0; }
 .date { font-size: clamp(36px, 9vmin, 110px); font-weight: 700; line-height: 1.15; margin: 0; }
 .weekday { font-size: clamp(30px, 7vmin, 84px); font-weight: 700; color: var(--accent); margin: 0; }
