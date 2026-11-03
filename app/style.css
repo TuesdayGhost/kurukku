@@ -89,6 +89,21 @@ button { cursor: pointer; }
 .notice.many .item .time-n { font-size: clamp(26px, 6vmin, 76px); }
 .notice .pigeon { font-size: clamp(18px, 3.4vmin, 40px); color: var(--muted); display: flex; gap: 1em; flex-wrap: wrap; align-items: center; }
 
+/* 夜の表示：まぶしくない暗い地に、落ち着いた明るさの文字 */
+:root { --night-bg: #0b0e12; --night-fg: #c8c2b2; --night-muted: #7f8790; }
+body.is-night { background: var(--night-bg); }
+.night-screen {
+  position: fixed; inset: 0; background: var(--night-bg); color: var(--night-fg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vmin; text-align: center;
+  padding: max(3vmin, env(safe-area-inset-top, 0px)) max(4vmin, env(safe-area-inset-right, 0px)) max(3vmin, env(safe-area-inset-bottom, 0px)) max(4vmin, env(safe-area-inset-left, 0px));
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.night-screen p { margin: 0; }
+.n-date { font-size: clamp(22px, 5vmin, 60px); color: var(--night-muted); }
+.n-clock { font-size: clamp(72px, 26vmin, 300px); font-weight: 500; line-height: 1; letter-spacing: 0.02em; }
+.n-text { font-size: clamp(24px, 6vmin, 72px); }
+.n-tap { color: var(--night-muted); border-color: var(--night-muted); margin-top: 3vmin; }
+
 /* 端末メニュー（時計を長押し） */
 .sheet-backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 0.35); display: grid; place-items: center; padding: 16px; z-index: 20; }
 .sheet { background: var(--surface); border-radius: 12px; padding: 20px; width: min(420px, 100%); display: grid; gap: 12px; }

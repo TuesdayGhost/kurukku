@@ -185,6 +185,9 @@ function fill() {
   if (v === "settings") { setHTML($("people-list"), peopleListHTML()); setHTML($("member-list"), memberListHTML()); setHTML($("invite-list"), inviteListHTML()); }
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
   const pn = $("pigeon-name"); if (pn && !pn.dataset.touched) pn.value = pigeonName();
+  const ns = $("night-start"), ne = $("night-end");
+  if (ns && !ns.dataset.touched) ns.value = S.hm(state.household?.night_start || "21:00");
+  if (ne && !ne.dataset.touched) ne.value = S.hm(state.household?.night_end || "06:00");
   const pp = $("pigeon-preview"); if (pp) pp.textContent = pigeonName() ? `${pigeonName()}です。` : "";
   const wl = $("weather-label"); if (wl) wl.textContent = state.household?.weather_label || "未設定（天気は表示されません）";
 }
@@ -309,13 +312,26 @@ function viewDisplay() {
       <div class="status-line" id="status"></div>
     </section>
   </div>
+  <div id="night"></div>
   <div id="notice"></div>
   <div id="sheet"></div>`;
 }
 
 function updateDisplay(np, occ, active) {
-  const hour = Number(np.time.slice(0, 2));
-  $("greet").textContent = hour >= 4 && hour < 11 ? "おはようございます" : "";
+  const nightStart = state.household?.night_start || "21:00";
+  const nightEnd = state.household?.night_end || "06:00";
+  const night = S.isNight(np.time, nightStart, nightEnd);
+  // 朝の挨拶：夜が明けてから11時まで（出す時間の最終版は未決・仮置き）
+  const morning = !night && S.normTime(nightEnd) <= np.time && np.time < "11:00:00";
+  $("greet").textContent = morning ? "おはようございます" : "";
+  document.body.classList.toggle("is-night", night);
+  // 夜：暗い画面で日付・時計・ひとことだけを出し続ける（画面は消さない）
+  setHTML($("night"), night ? `<div class="night-screen" aria-label="夜の表示">
+      <p class="n-date">${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</p>
+      <p class="n-clock num">${np.time.slice(0, 5)}</p>
+      <p class="n-text">今は夜です。おやすみなさい</p>
+      ${sound.isReady() ? "" : `<button class="tap-sound n-tap" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}
+    </div>` : "");
   $("date").textContent = `${np.m}月${np.d}日`;
   $("wday").textContent = `${S.WEEKDAYS[np.dow]}曜日`;
   setHTML($("weather"), weatherHTML(np));
@@ -367,7 +383,7 @@ function updateDisplay(np, occ, active) {
 const MENU_PRESS_MS = 5000;
 let pressTimer = null;
 addEventListener("pointerdown", (e) => {
-  if (state.view !== "display" || !e.target.closest?.("#when")) return;
+  if (state.view !== "display" || !e.target.closest?.("#when, .night-screen")) return;
   clearTimeout(pressTimer);
   pressTimer = setTimeout(openSheet, MENU_PRESS_MS);
 });
@@ -706,6 +722,14 @@ function settingsHTML() {
     </form>
     <p class="hint">お知らせのとき「くるっくー。<span id="pigeon-preview"></span>お父さん、6時半から夕ごはんです。」のように名乗ります。</p>
   </section>
+  <section class="card"><h2>夜の表示</h2>
+    <p class="hint">この時間は、表示端末が暗い画面になり、日付と時計と「今は夜です」だけを出します（画面は消えません）。</p>
+    <form id="night-form" class="row">
+      <label class="field"><span>夜の始まり</span><input type="time" id="night-start" required></label>
+      <label class="field"><span>朝（夜の終わり）</span><input type="time" id="night-end" required></label>
+      <button class="btn" type="submit">保存</button>
+    </form>
+  </section>
   <section class="card"><h2>天気の地域</h2>
     <p class="hint">いまの設定：<strong id="weather-label"></strong></p>
     <form id="place-form" class="row">
@@ -829,7 +853,7 @@ function syncNotifyDefaults(prefix = "add-") {
     if (!$(prefix + "nuntil").value) $(prefix + "nuntil").value = S.shiftTime(start, 5);
   }
 }
-$app.addEventListener("input", (e) => { if (e.target.id === "pigeon-name") e.target.dataset.touched = "1"; });
+$app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "night-end"].includes(e.target.id)) e.target.dataset.touched = "1"; });
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
@@ -851,6 +875,16 @@ $app.addEventListener("submit", async (e) => {
   if (form.id === "add-form") return guarded(btn, submitSchedule);
   if (form.id === "edit-form") return guarded(btn, submitEdit);
   if (form.id === "msg-form") return guarded(btn, submitMessage);
+  if (form.id === "night-form") return guarded(btn, async () => {
+    const a = $("night-start").value, b = $("night-end").value;
+    if (!a || !b) throw new Error("夜の始まりと朝の時刻を入れてください");
+    if (a === b) throw new Error("夜の始まりと朝を、違う時刻にしてください");
+    const { error } = await sb.from("households").update({ night_start: a, night_end: b }).eq("id", state.member.household_id);
+    if (error) throw error;
+    delete $("night-start").dataset.touched; delete $("night-end").dataset.touched;
+    toast(`夜の表示を ${a}〜${b} にしました`);
+    await refresh();
+  });
   if (form.id === "pigeon-form") return guarded(btn, async () => {
     const name = $("pigeon-name").value.trim();
     const { error } = await sb.from("households").update({ pigeon_name: name || null }).eq("id", state.member.household_id);

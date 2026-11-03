@@ -93,3 +93,15 @@ test("お知らせの読み上げ（11/2 決定の案2）", () => {
   assert.equal(S.noticeSpeech(shop, mom, "ぽーちゃん"), "くるっくー。ぽーちゃんです。母は、3時から買い物です。4時半に帰ってきます。");
   assert.equal(S.messageSpeech({ body: "6時半ごろ帰ります" }, { name: "葵依" }, "ぽーちゃん"), "くるっくー。ぽーちゃんです。葵依から、お知らせです。6時半ごろ帰ります");
 });
+
+test("夜の時間帯：21時〜翌6時（0時をまたぐ）", () => {
+  assert.equal(S.isNight("20:59:59"), false);
+  assert.equal(S.isNight("21:00:00"), true);
+  assert.equal(S.isNight("00:30:00"), true);
+  assert.equal(S.isNight("05:59:59"), true);
+  assert.equal(S.isNight("06:00:00"), false);
+  assert.equal(S.isNight("12:00:00"), false);
+  assert.equal(S.isNight("01:00:00", "00:00", "05:00"), true);   // またがない設定
+  assert.equal(S.isNight("23:00:00", "00:00", "05:00"), false);
+  assert.equal(S.isNight("03:00:00", "06:00", "06:00"), false);  // 開始=終了なら夜なし
+});

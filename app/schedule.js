@@ -154,3 +154,10 @@ export function messageSpeech(m, person, pigeonName = "") {
   const from = person ? `${person.name}から、` : "";
   return `${intro(pigeonName)}${from}お知らせです。${m.body}`;
 }
+
+/** 夜の時間帯か（0時をまたぐ設定にも対応。開始=終了なら夜なし） */
+export function isNight(time, start = "21:00", end = "06:00") {
+  const t = normTime(time), a = normTime(start), b = normTime(end);
+  if (a === b) return false;
+  return a < b ? a <= t && t < b : t >= a || t < b;
+}
