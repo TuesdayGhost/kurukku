@@ -32,6 +32,7 @@ const state = {
   view: "", lastInvite: null,
 };
 let draft = freshDraft();
+let edit = null;   // 変更中の予定 { id, date, scope, weekdays, back }
 let lastInteraction = Date.now();
 const loggedNotices = new Set();
 
@@ -156,6 +157,7 @@ function currentView() {
   const h = location.hash.replace("#", "");
   if (role() === "display") return "display";
   if (role() === "living") return h === "add" ? "add" : "display";
+  if (h === "edit") return edit && state.schedules.some((x) => x.id === edit.id) ? "edit" : "plans";
   return ["today", "add", "plans", "messages", "settings", "display"].includes(h) ? h : "today";
 }
 
@@ -176,6 +178,7 @@ function mount() {
 function fill() {
   const v = state.view;
   if (v === "add") { renderChips(); }
+  if (v === "edit") renderEditChips();
   if (v === "today") setHTML($("today-list"), todayListHTML());
   if (v === "plans") setHTML($("plans-list"), plansListHTML());
   if (v === "messages") { setHTML($("msg-from"), msgFromChipsHTML()); setHTML($("msg-list"), msgListHTML()); }
@@ -426,7 +429,8 @@ function viewFamily(v) {
   let body = "";
   if (v === "today") body = `<section class="card"><h2>今日の予定</h2><ul class="list" id="today-list"></ul></section>`;
   if (v === "add") body = addFormHTML(true);
-  if (v === "plans") body = `<section class="card"><h2>予定一覧</h2><p class="hint">毎週の予定と、今日以降の予定です。繰り返しの内容を変えたいときは、いったん削除して追加し直してください（変更の画面はこれから作ります）。</p><ul class="list" id="plans-list"></ul></section>`;
+  if (v === "plans") body = `<section class="card"><h2>予定一覧</h2><p class="hint">毎週の予定と、今日以降の予定です。「変更」から、時刻や内容を変えられます。</p><ul class="list" id="plans-list"></ul></section>`;
+  if (v === "edit") body = editFormHTML();
   if (v === "messages") body = msgFormHTML();
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
@@ -441,6 +445,9 @@ function scheduleLine(s, extra = "") {
   const p = person(s.person_id);
   const badges = [];
   if (s.kind === "weekly") badges.push(S.repeatLabel(s));
+  if (s.kind === "weekly" && s.valid_from && s.valid_from > state.today) badges.push(`${S.repeatLabel({ kind: "once", on_date: s.valid_from })}から`);
+  if (s.kind === "weekly" && s.valid_until) badges.push(`${S.repeatLabel({ kind: "once", on_date: s.valid_until })}まで`);
+  if (s.kind === "once" && s.replaces_schedule_id) badges.push("この日だけ変更");
   if (s.notify_from) badges.push(`お知らせ ${S.hm(s.notify_from)}〜${S.hm(s.notify_until)}${s.notify_sound ? "" : "（音なし）"}`);
   return `<div class="main"><strong class="num">${esc(S.timeLabel(s) || "時刻なし")}</strong>　${esc(s.title)}
     <span class="badge">${esc(p ? p.name : "?")}</span>${badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}
@@ -452,6 +459,7 @@ function scheduleLine(s, extra = "") {
 function todayListHTML() {
   const occ = S.occurrencesOn(state.schedules, state.exceptions, state.today);
   const rows = occ.map((s) => `<li>${scheduleLine(s)}
+    <button class="btn small" data-act="edit" data-id="${s.id}" data-date="${state.today}" data-back="today">変更</button>
     ${s.kind === "weekly"
       ? `<button class="btn small danger" data-act="cancel-day" data-id="${s.id}">今日だけ中止</button>`
       : `<button class="btn small danger" data-act="delete" data-id="${s.id}">削除</button>`}</li>`);
@@ -463,11 +471,117 @@ function todayListHTML() {
 
 function plansListHTML() {
   const list = state.schedules
-    .filter((s) => s.kind === "weekly" || s.on_date >= state.today)
+    .filter((s) => (s.kind === "weekly" && (!s.valid_until || s.valid_until >= state.today)) || (s.kind === "once" && s.on_date >= state.today))
     .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "weekly" ? -1 : 1) || (a.on_date || "").localeCompare(b.on_date || "") || S.sortKey(a).localeCompare(S.sortKey(b)));
   return list.map((s) => `<li>${scheduleLine(s, s.kind === "once" ? `<div class="sub">${esc(S.repeatLabel(s))}</div>` : "")}
+    <button class="btn small" data-act="edit" data-id="${s.id}" data-date="${s.kind === "once" ? s.on_date : state.today}" data-back="plans">変更</button>
     <button class="btn small danger" data-act="delete" data-id="${s.id}">削除</button></li>`).join("")
     || `<li class="hint">予定はまだありません。</li>`;
+}
+
+// ---------- 予定の変更 ----------
+function editFormHTML() {
+  const s = state.schedules.find((x) => x.id === edit.id);
+  const weekly = s.kind === "weekly";
+  const t = (v) => esc(S.hm(v));
+  return `<form class="card" id="edit-form" novalidate>
+    <h2>予定を変更</h2>
+    <ul class="list"><li>${scheduleLine(s)}</li></ul>
+    ${weekly ? `
+    <fieldset><legend>どこを変えますか</legend>
+      <div class="chips" id="ed-scope"></div>
+      <label class="field" id="ed-once-wrap" hidden><span>変える日</span><input type="date" id="ed-once-date" value="${esc(edit.date)}" min="${esc(state.today)}"></label>
+      <label class="field" id="ed-from-wrap" hidden><span>この日から先を変える</span><input type="date" id="ed-from-date" value="${esc(state.today)}" min="${esc(state.today)}">
+        <small>前の日までは、今までどおりの予定として残ります。</small></label>
+    </fieldset>` : ""}
+    ${s.replaces_schedule_id ? `<p class="hint">この予定は、毎週の予定を「この日だけ変更」したものです。</p>
+      <button class="btn small" type="button" data-act="revert-once" data-id="${s.id}">この日の変更を取り消して、いつもの予定に戻す</button>` : ""}
+    <label class="field"><span>用件</span><input type="text" id="ed-title" maxlength="40" value="${esc(s.title)}" required></label>
+    <div class="row">
+      <label class="field"><span>時刻</span><input type="time" id="ed-start" value="${t(s.start_time)}"></label>
+      <label class="field"><span>戻る・終わる時刻</span><input type="time" id="ed-end" value="${t(s.end_time)}"><small>未定なら空欄</small></label>
+    </div>
+    ${weekly ? `<fieldset id="ed-weekdays-wrap" hidden><legend>くりかえす曜日</legend><div class="chips" id="ed-weekdays"></div></fieldset>` : ""}
+    <label class="check"><input type="checkbox" id="ed-notify" ${s.notify_from ? "checked" : ""}> 時間になったら表示端末でお知らせする</label>
+    <div class="row" id="ed-notify-times" ${s.notify_from ? "" : "hidden"}>
+      <label class="field"><span>お知らせ開始</span><input type="time" id="ed-nfrom" value="${t(s.notify_from)}"></label>
+      <label class="field"><span>お知らせ終了</span><input type="time" id="ed-nuntil" value="${t(s.notify_until)}"></label>
+      <label class="check"><input type="checkbox" id="ed-nsound" ${s.notify_from && !s.notify_sound ? "" : "checked"}> 鳩の音と読み上げ</label>
+    </div>
+    <label class="field"><span>本人向けの表示文（空なら用件をそのまま表示）</span><input type="text" id="ed-display" maxlength="60" value="${esc(s.display_text || "")}"></label>
+    <label class="field"><span>家族メモ（本人の画面には出ません）</span><textarea id="ed-memo" maxlength="400">${esc(s.family_memo || "")}</textarea></label>
+    <label class="check"><input type="checkbox" id="ed-gazette" ${s.memo_for_gazette ? "checked" : ""}> このメモを鳩月報に使ってよい</label>
+    <div class="row">
+      <button class="btn primary" type="submit" id="ed-submit">変更を保存</button>
+      <a class="btn" href="#${esc(edit.back)}">やめる</a>
+    </div>
+  </form>`;
+}
+
+function renderEditChips() {
+  if (!edit) return;
+  const s = state.schedules.find((x) => x.id === edit.id);
+  if (!s || s.kind !== "weekly" || !$("ed-scope")) return;
+  setHTML($("ed-scope"), [["once", "この日だけ変える"], ["from", "この日から先をずっと変える"]]
+    .map(([k, l]) => `<button type="button" class="chip" data-act="ed-scope" data-v="${k}" aria-pressed="${edit.scope === k}">${l}</button>`).join(""));
+  $("ed-once-wrap").hidden = edit.scope !== "once";
+  $("ed-from-wrap").hidden = edit.scope !== "from";
+  $("ed-weekdays-wrap").hidden = edit.scope !== "from";
+  setHTML($("ed-weekdays"), S.WEEKDAYS.map((w, i) => `<button type="button" class="chip" data-act="ed-wd" data-v="${i}" aria-pressed="${edit.weekdays.has(i)}">${w}</button>`).join(""));
+}
+
+function readScheduleFields(prefix) {
+  const v = (id) => $(prefix + id);
+  const title = v("title").value.trim();
+  if (!title) throw new Error("用件を入れてください");
+  const row = {
+    title,
+    start_time: v("start").value || null,
+    end_time: v("end").value || null,
+    display_text: v("display").value.trim() || null,
+    family_memo: v("memo").value.trim() || null,
+    memo_for_gazette: v("gazette").checked,
+    notify_from: null, notify_until: null, notify_sound: true,
+  };
+  if (v("notify").checked) {
+    const nf = v("nfrom").value, nu = v("nuntil").value;
+    if (!nf || !nu) throw new Error("お知らせの開始と終了の時刻を入れてください");
+    if (S.normTime(nu) <= S.normTime(nf)) throw new Error("お知らせ終了は、開始より後の時刻にしてください");
+    Object.assign(row, { notify_from: nf, notify_until: nu, notify_sound: v("nsound").checked });
+  }
+  return row;
+}
+
+async function submitEdit() {
+  const s = state.schedules.find((x) => x.id === edit.id);
+  if (!s) throw new Error("この予定は見つかりません（削除されたかもしれません）");
+  const row = readScheduleFields("ed-");
+  let msg = "変更しました";
+  if (s.kind === "once") {
+    const { error } = await sb.from("schedules").update(row).eq("id", s.id);
+    if (error) throw error;
+  } else if (edit.scope === "once") {
+    const date = $("ed-once-date").value;
+    if (!date || date < state.today) throw new Error("変える日を、今日以降で選んでください");
+    if (!S.occursOn(s, date)) throw new Error("その日は、この予定がくりかえす日ではありません");
+    const { error } = await sb.rpc("change_schedule_once", { p_id: s.id, p_date: date, p_changes: row });
+    if (error) throw error;
+    msg = `${S.repeatLabel({ kind: "once", on_date: date })}だけ変更しました`;
+  } else if (edit.scope === "from") {
+    const from = $("ed-from-date").value;
+    if (!from || from < state.today) throw new Error("変え始める日を、今日以降で選んでください");
+    if (!edit.weekdays.size) throw new Error("くりかえす曜日を選んでください");
+    const { error } = await sb.rpc("change_schedule_from", { p_id: s.id, p_from: from, p_changes: { ...row, weekdays: [...edit.weekdays].sort() } });
+    if (error) throw error;
+    msg = `${S.repeatLabel({ kind: "once", on_date: from })}から先を変更しました`;
+  } else {
+    throw new Error("「この日だけ」か「この日から先」かを選んでください");
+  }
+  toast(msg);
+  const back = edit.back;
+  edit = null;
+  await refresh();
+  location.hash = `#${back}`;
 }
 
 // 予定の追加フォーム（full=false は居間用の簡単版）
@@ -668,6 +782,20 @@ $app.addEventListener("click", async (e) => {
     const { error } = await sb.from("schedule_exceptions").delete().eq("schedule_id", id).eq("on_date", state.today);
     if (error) throw error; toast("中止を取り消しました"); await refresh();
   });
+  if (act === "edit") {
+    const s = state.schedules.find((x) => x.id === id);
+    edit = { id, date: btn.dataset.date || state.today, scope: null, weekdays: new Set((s?.weekdays || []).map(Number)), back: btn.dataset.back || "plans" };
+    if (location.hash === "#edit") mount(); else location.hash = "#edit";
+  }
+  if (act === "ed-scope") { edit.scope = btn.dataset.v; renderEditChips(); }
+  if (act === "ed-wd") { const d = Number(btn.dataset.v); edit.weekdays.has(d) ? edit.weekdays.delete(d) : edit.weekdays.add(d); renderEditChips(); }
+  if (act === "revert-once") { if (needsConfirm(btn, "もう一度押すと、いつもの予定に戻します")) return; guarded(btn, async () => {
+    const { error } = await sb.rpc("revert_schedule_once", { p_once_id: id });
+    if (error) throw error;
+    toast("いつもの予定に戻しました");
+    const back = edit?.back || "plans"; edit = null;
+    await refresh(); location.hash = `#${back}`;
+  }); }
   if (act === "delete") { if (needsConfirm(btn, "もう一度押すと削除")) return; guarded(btn, async () => {
     const { error } = await sb.from("schedules").delete().eq("id", id);
     if (error) throw error; toast("削除しました"); await refresh();
@@ -687,19 +815,20 @@ document.addEventListener("click", (e) => {
   if (e.target.classList?.contains("sheet-backdrop")) e.target.remove();
 });
 
-function syncNotifyDefaults() {
-  const n = $("add-notify");
+function syncNotifyDefaults(prefix = "add-") {
+  const n = $(prefix + "notify");
   if (!n) return;
-  $("add-notify-times").hidden = !n.checked;
-  const start = $("add-start").value;
+  $(prefix + "notify-times").hidden = !n.checked;
+  const start = $(prefix + "start").value;
   if (n.checked && start) {
-    if (!$("add-nfrom").value) $("add-nfrom").value = S.shiftTime(start, -10);
-    if (!$("add-nuntil").value) $("add-nuntil").value = S.shiftTime(start, 5);
+    if (!$(prefix + "nfrom").value) $(prefix + "nfrom").value = S.shiftTime(start, -10);
+    if (!$(prefix + "nuntil").value) $(prefix + "nuntil").value = S.shiftTime(start, 5);
   }
 }
 $app.addEventListener("input", (e) => { if (e.target.id === "pigeon-name") e.target.dataset.touched = "1"; });
 $app.addEventListener("change", (e) => {
-  if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults();
+  if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
+  if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
 });
 
 $app.addEventListener("submit", async (e) => {
@@ -716,6 +845,7 @@ $app.addEventListener("submit", async (e) => {
     if (error) throw error; toast("家を作りました。次に人を登録しましょう"); location.hash = "#settings"; await loadMember();
   });
   if (form.id === "add-form") return guarded(btn, submitSchedule);
+  if (form.id === "edit-form") return guarded(btn, submitEdit);
   if (form.id === "msg-form") return guarded(btn, submitMessage);
   if (form.id === "pigeon-form") return guarded(btn, async () => {
     const name = $("pigeon-name").value.trim();
