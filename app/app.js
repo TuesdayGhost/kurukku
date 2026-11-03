@@ -499,7 +499,7 @@ function editFormHTML() {
     <label class="field"><span>用件</span><input type="text" id="ed-title" maxlength="40" value="${esc(s.title)}" required></label>
     <div class="row">
       <label class="field"><span>時刻</span><input type="time" id="ed-start" value="${t(s.start_time)}"></label>
-      <label class="field"><span>戻る・終わる時刻</span><input type="time" id="ed-end" value="${t(s.end_time)}"><small>未定なら空欄</small></label>
+      <label class="field"><span>戻る・終わる時刻（未定なら空欄）</span><input type="time" id="ed-end" value="${t(s.end_time)}"></label>
     </div>
     ${weekly ? `<fieldset id="ed-weekdays-wrap" hidden><legend>くりかえす曜日</legend><div class="chips" id="ed-weekdays"></div></fieldset>` : ""}
     <label class="check"><input type="checkbox" id="ed-notify" ${s.notify_from ? "checked" : ""}> 時間になったら表示端末でお知らせする</label>
@@ -600,8 +600,8 @@ function addFormHTML(full) {
     </fieldset>
     <div class="row">
       <label class="field"><span>時刻</span><input type="time" id="add-start"></label>
-      <button class="btn small" type="button" data-act="now">今から</button>
-      <label class="field"><span>戻る・終わる時刻</span><input type="time" id="add-end"><small>未定なら空欄</small></label>
+      <button class="btn" type="button" data-act="now">今から</button>
+      <label class="field"><span>戻る・終わる時刻（未定なら空欄）</span><input type="time" id="add-end"></label>
     </div>
     ${full ? `
     <details>

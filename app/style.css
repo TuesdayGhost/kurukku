@@ -111,8 +111,14 @@ input[type="text"], input[type="email"], input[type="password"], input[type="dat
 }
 textarea { min-height: 84px; resize: vertical; }
 fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0; display: grid; gap: 8px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.row > .field { flex: 1 1 140px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.row > .field { flex: 1 1 140px; min-width: 0; }
+.field { min-width: 0; }
+/* iPhone/iPad の Safari は日付・時刻欄に最小幅を持つため、枠からはみ出さないようにする */
+input[type="date"], input[type="time"] {
+  -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }
 .check { display: flex; gap: 8px; align-items: center; }
 .check input { width: 22px; height: 22px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
