@@ -312,3 +312,13 @@ body[data-view="display"] #app { height: 100%; }
 .logo-h1 { display: grid; gap: 2px; justify-items: start; }
 .logo-h1 .logo { display: block; height: 40px; width: auto; color: var(--accent); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ========== 判子の鳩（11/5：キャラクターの鳩を1羽にそろえる） ========== */
+.pigeon-btn { color: var(--accent); --pigeon-bg: var(--surface); }
+.pigeon-btn .pigeon-ic { width: 68%; height: auto; }
+body.is-night .pigeon-btn { color: var(--night-muted); --pigeon-bg: var(--night-bg); }
+.gz-icon .gz-pigeon { color: var(--gz-ink); --pigeon-bg: #fff; }
+/* 鳩月報の題字：くるっくー（B-2）を小さく＋鳩月報を大きく */
+.gz-titles { display: grid; gap: 4px; justify-items: start; }
+.gz-wordmark { color: var(--gz-ink); --pigeon-bg: var(--gz-paper); line-height: 0; }
+.gz-wordmark .wordmark { height: 36px; width: auto; display: block; }

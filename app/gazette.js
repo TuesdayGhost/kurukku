@@ -39,7 +39,7 @@ export function statTiles(st, pigeonName = "鳩") {
   const late = (st.schedules || []).filter((x) => !x.is_patient && x.latest_end)
     .sort((a, b) => b.latest_end.localeCompare(a.latest_end))[0];
   if (late) tiles.push({ icon: "moon", label: "いちばん遅い戻り", who: `${late.person}・${late.title}`, num: late.latest_end, unit: "", note: "予定" });
-  tiles.push({ icon: "bird", label: `${pigeonName}がつつかれた`, who: "", num: String(st.pigeon_tapped ?? 0), unit: "回", note: "" });
+  tiles.push({ icon: "pigeon", label: `${pigeonName}がつつかれた`, who: "", num: String(st.pigeon_tapped ?? 0), unit: "回", note: "" });
   tiles.push({ icon: "mail", label: "家族の知らせ", who: "", num: String(st.messages_sent ?? 0), unit: "通", note: "" });
   tiles.push({ icon: "bell", label: "お知らせ", who: "", num: String(st.notices_shown ?? 0), unit: "回", note: "表示" });
   tiles.push({ icon: "camera", label: "ひとこと・写真", who: "", num: String(st.notes ?? 0), unit: "件", note: "" });

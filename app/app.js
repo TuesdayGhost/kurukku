@@ -11,7 +11,7 @@ import * as W from "./weather.js";
 import * as R from "./rescue.js";
 import * as G from "./gazette.js";
 import { icon } from "./icons.js";
-import { LOGO } from "./brand.js";
+import { LOGO, pigeon, WORDMARK_PERCH } from "./brand.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -361,7 +361,7 @@ function viewDisplay() {
     </section>
     <section class="pigeon-corner" aria-label="${esc(pigeonName() || "鳩")}">
       <p class="coo-bubble" id="coo-bubble" aria-live="polite" hidden></p>
-      <button type="button" class="pigeon-btn" data-act="pigeon" aria-label="${esc(pigeonName() || "鳩")}にさわる"><span aria-hidden="true">🕊️</span></button>
+      <button type="button" class="pigeon-btn" data-act="pigeon" aria-label="${esc(pigeonName() || "鳩")}にさわる">${pigeon("pigeon-ic")}</button>
     </section>
   </div>
   <div id="night"></div>
@@ -960,7 +960,7 @@ function renderPaper() {
   setHTML($("gz-paper"), `
     <section class="gazette" aria-label="鳩月報 ${y}年${m}月号">
       <header class="gz-mast">
-        <span class="gz-title">鳩月報</span>
+        <span class="gz-titles"><span class="gz-wordmark">${WORDMARK_PERCH}<span class="vh">くるっくー</span></span><span class="gz-title">鳩月報</span></span>
         <span class="gz-issue">${y}年${m}月号　${g.issued_on ? `${esc(R.ymd(g.issued_on))}発行` : "下書き"}　発行：${esc(pigeonName() || "鳩")}</span>
       </header>
       ${state.household?.is_demo ? `<p class="gz-demo">この紙面はデモ用の架空データから作りました</p>` : ""}
@@ -971,7 +971,7 @@ function renderPaper() {
         <figure class="gz-photo">${photoUrl ? `<a href="${photoUrl}" target="_blank" rel="noopener"><img src="${photoUrl}" alt="今月の一枚"></a><figcaption>今月の一枚（写真と記事の出来事は同じとは限りません）</figcaption>` : `<div class="gz-nophoto">写真なし</div>`}${photoPick}</figure>
         <div class="gz-articles">${arts}</div>
         <aside class="gz-stats"><h3>今月の記録</h3><ul class="gz-tiles">${G.statTiles(g.stats || {}, pigeonName() || "鳩").map((t) => `<li class="gz-tile">
-            <span class="gz-icon">${icon(t.icon, "gz-ic")}</span>
+            <span class="gz-icon">${t.icon === "pigeon" ? pigeon("gz-ic gz-pigeon") : icon(t.icon, "gz-ic")}</span>
             <span class="gz-num num">${esc(t.num)}<small>${esc(t.unit)}</small></span>
             <span class="gz-label">${esc(t.label)}</span>
             ${t.who || t.note ? `<span class="gz-who">${esc([t.who, t.note].filter(Boolean).join("・"))}</span>` : ""}</li>`).join("")}</ul>

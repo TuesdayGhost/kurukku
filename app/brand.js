@@ -1,4 +1,4 @@
-// くるっくーのロゴ（11/5 候補・未決定：判子のシンボルA-2＋線で組んだ「くるっくー」B-1。仮に入れてある）。
+// くるっくーのロゴ（11/5 採用：判子のシンボルA-2＋線で組んだ「くるっくー」B-1）。
 // 色は currentColor。家族の画面・ログイン画面のヘッダーで使う。本人の画面には出さない（spec 1章「装飾が予定への注意を奪わない」）。
 // 形の設計と他の案：docs/brand.md
 export const LOGO = `<svg viewBox="0 0 476 160" aria-hidden="true" focusable="false" class="logo">
@@ -17,4 +17,23 @@ export const LOGO = `<svg viewBox="0 0 476 160" aria-hidden="true" focusable="fa
     <circle cx="128" cy="128" r="118" fill="currentColor" mask="url(#kuru-b1-cut)"/>
   </g>
   <g transform="translate(168 22) scale(0.72)" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M64 14L28 50L64 86" transform="translate(0 0)"/><path d="M26 16H68L28.25 53.86A24 24 0 1 1 29.22 76A9 9 0 0 1 44.8 67A9 9 0 0 1 29.22 76" transform="translate(84 0)"/><path d="M26 56L40.48 43.33A22 22 0 1 1 37.67 83.42" transform="translate(170 0)"/><path d="M64 14L28 50L64 86" transform="translate(236 0)"/><path d="M14 50H78" transform="translate(320 0)"/></g>
+</svg>`;
+
+// ---------- キャラクターの鳩（11/5 決定：判子の鳩1羽にそろえる） ----------
+// 胴は currentColor、目と翼のひと筋は --pigeon-bg（置く場所の地の色）で抜く。
+const PIGEON_BODY = `<path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/>`;
+
+/** 判子の鳩だけ（右下のボタン・鳩月報のタイルなど） */
+export function pigeon(cls = "pigeon-ic") {
+  return `<svg class="${cls}" viewBox="36 60 186 146" aria-hidden="true" focusable="false">${PIGEON_BODY}</svg>`;
+}
+
+// ---------- 鳩月報の題字の上に置く B-2（11/5 決定）：「くるっくー」の「ー」に鳩がとまる ----------
+// 文字は B-1 と同じ線のひらがな（線幅11）。鳩は「ー」（x 334〜398、y 50）の上にとまる。
+const PERCH_S = 0.36;
+export const WORDMARK_PERCH = `<svg class="wordmark" viewBox="0 -12 412 112" aria-hidden="true" focusable="false">
+  <g fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M64 14L28 50L64 86"/><path d="M26 16H68L28.25 53.86A24 24 0 1 1 29.22 76A9 9 0 0 1 44.8 67A9 9 0 0 1 29.22 76" transform="translate(84 0)"/><path d="M26 56L40.48 43.33A22 22 0 1 1 37.67 83.42" transform="translate(170 0)"/><path d="M64 14L28 50L64 86" transform="translate(236 0)"/><path d="M14 50H78" transform="translate(320 0)"/></g>
+  <g transform="translate(${(366 - 129 * PERCH_S).toFixed(2)} ${(44 - 203 * PERCH_S).toFixed(2)}) scale(${PERCH_S})">${PIGEON_BODY}</g>
 </svg>`;
