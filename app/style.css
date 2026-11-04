@@ -191,3 +191,6 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 .rc-cloth figcaption { font-size: 0.95rem; overflow-wrap: anywhere; }
 .rc-share-img { width: 100%; max-width: 480px; border: 1px solid var(--line); border-radius: 8px; }
 .rs-thumb { width: 160px; max-width: 100%; border-radius: 8px; }
+
+/* デモ用の家の印（本番のデータと見分ける） */
+.demo-badge { display: inline-block; border: 1.5px dashed var(--accent-2); color: var(--accent-2); border-radius: 6px; padding: 0 8px; font-weight: 700; font-size: 0.85rem; }

@@ -186,6 +186,7 @@ function fill() {
   if (v === "messages") { setHTML($("msg-from"), msgFromChipsHTML()); setHTML($("msg-list"), msgListHTML()); }
   if (v === "settings") { setHTML($("people-list"), peopleListHTML()); setHTML($("member-list"), memberListHTML()); setHTML($("invite-list"), inviteListHTML()); }
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
+  const db = $("demo-badge"); if (db) db.hidden = !state.household?.is_demo;
   const pn = $("pigeon-name"); if (pn && !pn.dataset.touched) pn.value = pigeonName();
   const ns = $("night-start"), ne = $("night-end");
   if (ns && !ns.dataset.touched) ns.value = S.hm(state.household?.night_start || "21:00");
@@ -361,6 +362,7 @@ function updateDisplay(np, occ, active) {
   const parts = [];
   if (state.syncError) parts.push(`<span class="warn">接続できません（${state.lastSync ? jstHM(state.lastSync) + " の情報" : "情報なし"}）</span>`);
   else if (state.lastSync) parts.push(`<span>更新 ${jstHM(state.lastSync)}</span>`);
+  if (state.household?.is_demo) parts.push(`<span class="demo-badge">デモ用データ（架空）</span>`);
   if (!sound.isReady()) parts.push(`<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`);
   if (role() === "living") parts.push(`<a class="btn primary" href="#add">予定を追加</a>`);
   if (role() === "family") parts.push(`<a class="btn small" href="#today">家族の画面へ</a>`);
@@ -457,7 +459,7 @@ function viewFamily(v) {
   if (v === "messages") body = msgFormHTML();
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
-    <header class="bar"><h1>くるっくー <span class="hint" id="hh-name"></span></h1></header>
+    <header class="bar"><h1>くるっくー <span class="hint" id="hh-name"></span></h1><span class="demo-badge" id="demo-badge" hidden>デモ用データ（架空）</span></header>
     <a class="btn rescue-entry" href="#rescue">レスキューカード（本人の情報をすぐ見せる）</a>
     <nav class="tabs" aria-label="画面">${tabs}</nav>
     ${state.syncError ? `<p class="error">接続できません：${esc(state.syncError)}</p>` : ""}
