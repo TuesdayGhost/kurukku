@@ -9,6 +9,7 @@ import * as S from "./schedule.js";
 import * as sound from "./sound.js";
 import * as W from "./weather.js";
 import * as R from "./rescue.js";
+import * as G from "./gazette.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -861,21 +862,6 @@ async function showPaper(g) {
   renderPaper();
 }
 
-function statsBox(st) {
-  const rows = [];
-  for (const x of st.schedules || []) {
-    if (!x.planned_times) continue;
-    rows.push([`${x.person}の${x.title}`, `予定 ${x.planned_times}回`]);
-  }
-  const lateOut = (st.schedules || []).filter((x) => !x.is_patient && x.latest_end).sort((a, b) => b.latest_end.localeCompare(a.latest_end))[0];
-  if (lateOut) rows.push([`いちばん遅い戻り（${lateOut.person}・${lateOut.title}）`, lateOut.latest_end]);
-  rows.push([`${pigeonName() || "鳩"}がつつかれた`, `${st.pigeon_tapped ?? 0}回`]);
-  rows.push(["家族からの知らせ", `${st.messages_sent ?? 0}通`]);
-  rows.push(["お知らせを表示", `${st.notices_shown ?? 0}回`]);
-  rows.push(["ひとこと・写真", `${st.notes ?? 0}件`]);
-  return rows.slice(0, 10);
-}
-
 function renderPaper() {
   const g = gz.paper;
   if (!g) { setHTML($("gz-paper"), ""); return; }
@@ -899,7 +885,11 @@ function renderPaper() {
       <div class="gz-body">
         <figure class="gz-photo">${photoUrl ? `<a href="${photoUrl}" target="_blank" rel="noopener"><img src="${photoUrl}" alt="今月の一枚"></a><figcaption>今月の一枚（写真と記事の出来事は同じとは限りません）</figcaption>` : `<div class="gz-nophoto">写真なし</div>`}${photoPick}</figure>
         <div class="gz-articles">${arts}</div>
-        <aside class="gz-stats"><h3>今月の記録</h3><dl>${statsBox(g.stats || {}).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <aside class="gz-stats"><h3>今月の記録</h3><ul class="gz-tiles">${G.statTiles(g.stats || {}, pigeonName() || "鳩").map((t) => `<li class="gz-tile">
+            <span class="gz-icon" aria-hidden="true">${t.icon}</span>
+            <span class="gz-num num">${esc(t.num)}<small>${esc(t.unit)}</small></span>
+            <span class="gz-label">${esc(t.label)}</span>
+            ${t.who || t.note ? `<span class="gz-who">${esc([t.who, t.note].filter(Boolean).join("・"))}</span>` : ""}</li>`).join("")}</ul>
           <p class="gz-note">回数は記録から数えたものです。「予定」は予定の回数で、実際に出かけた回数ではありません。</p></aside>
       </div>
       <footer class="gz-foot">見出しと記事：${esc(g.model || "Claude")}　${g.generated_at ? `作成 ${esc(R.ymd(String(g.generated_at).slice(0, 10)))}` : ""}</footer>
