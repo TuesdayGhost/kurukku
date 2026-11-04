@@ -11,6 +11,7 @@ import * as W from "./weather.js";
 import * as R from "./rescue.js";
 import * as G from "./gazette.js";
 import { icon } from "./icons.js";
+import { LOGO } from "./brand.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -483,7 +484,7 @@ function openSheet() {
 // ---------- ログイン・参加 ----------
 function viewLogin() {
   return `<main class="page">
-    <header class="bar"><h1>くるっくー</h1></header>
+    <header class="bar"><h1 class="logo-h1">${LOGO}<span class="vh">くるっくー</span></h1></header>
     <form class="card" id="login-form">
       <h2>ログイン</h2>
       <label class="field"><span>メールアドレス</span><input type="email" id="login-email" autocomplete="username" required></label>
@@ -500,7 +501,7 @@ function viewLogin() {
 
 function viewJoin() {
   return `<main class="page">
-    <header class="bar"><h1>くるっくー</h1><button class="btn small" data-act="logout">ログアウト</button></header>
+    <header class="bar"><h1 class="logo-h1">${LOGO}<span class="vh">くるっくー</span></h1><button class="btn small" data-act="logout">ログアウト</button></header>
     <p class="hint">${esc(state.session.user.email)} でログインしています。この端末をどの家で使うかを決めます。</p>
     <form class="card" id="join-form">
       <h2>招待コードで参加する</h2>
@@ -546,7 +547,7 @@ function viewFamily(v) {
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
     <header class="bar family-bar">
-      <div class="brand"><h1>くるっくー <span class="hint" id="hh-name"></span></h1><span class="demo-badge" id="demo-badge" hidden>デモ用データ（架空）</span></div>
+      <div class="brand"><h1 class="logo-h1">${LOGO}<span class="vh">くるっくー</span> <span class="hint" id="hh-name"></span></h1><span class="demo-badge" id="demo-badge" hidden>デモ用データ（架空）</span></div>
       <a class="btn rescue-entry" href="#rescue" ${v === "rescue" ? 'aria-current="page"' : ""}>${icon("id-card", "nav-ic")}<span>レスキューカード</span></a>
     </header>
     <nav class="bottom-nav" aria-label="画面">${tabs}</nav>

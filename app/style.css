@@ -307,3 +307,8 @@ body[data-view="display"] #app { height: 100%; }
 .family-bar .brand h1 { font-size: 1.35rem; line-height: 1.25; }
 .family-bar .brand h1 .hint { display: block; font-size: 0.8rem; }
 .family-bar .rescue-entry { flex: none; }
+
+/* ========== ロゴ（11/5）：家族の画面・ログイン画面のヘッダーだけ ========== */
+.logo-h1 { display: grid; gap: 2px; justify-items: start; }
+.logo-h1 .logo { display: block; height: 40px; width: auto; color: var(--accent); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
