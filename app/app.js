@@ -8,6 +8,7 @@ import { SUPABASE_URL, SUPABASE_KEY, TIMEZONE } from "./config.js";
 import * as S from "./schedule.js";
 import * as sound from "./sound.js";
 import * as W from "./weather.js";
+import * as R from "./rescue.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -158,7 +159,7 @@ function currentView() {
   if (role() === "display") return "display";
   if (role() === "living") return h === "add" ? "add" : "display";
   if (h === "edit") return edit && state.schedules.some((x) => x.id === edit.id) ? "edit" : "plans";
-  return ["today", "add", "plans", "messages", "settings", "display"].includes(h) ? h : "today";
+  return ["today", "add", "plans", "messages", "settings", "display", "rescue", "rescue-edit"].includes(h) ? h : "today";
 }
 
 function mount() {
@@ -170,6 +171,7 @@ function mount() {
   else if (v === "join") $app.innerHTML = viewJoin();
   else if (v === "display") { $app.innerHTML = viewDisplay(); keepAwake(); }
   else $app.innerHTML = viewFamily(v);
+  if (v === "rescue" || v === "rescue-edit") openRescue(v);
   fill();
   tick();
 }
@@ -451,10 +453,12 @@ function viewFamily(v) {
   if (v === "add") body = addFormHTML(true);
   if (v === "plans") body = `<section class="card"><h2>予定一覧</h2><p class="hint">毎週の予定と、今日以降の予定です。「変更」から、時刻や内容を変えられます。</p><ul class="list" id="plans-list"></ul></section>`;
   if (v === "edit") body = editFormHTML();
+  if (v === "rescue" || v === "rescue-edit") body = `<section class="card" id="rescue-root"><p class="hint">読み込み中…</p></section>`;
   if (v === "messages") body = msgFormHTML();
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
     <header class="bar"><h1>くるっくー <span class="hint" id="hh-name"></span></h1></header>
+    <a class="btn rescue-entry" href="#rescue">レスキューカード（本人の情報をすぐ見せる）</a>
     <nav class="tabs" aria-label="画面">${tabs}</nav>
     ${state.syncError ? `<p class="error">接続できません：${esc(state.syncError)}</p>` : ""}
     ${body}
@@ -497,6 +501,237 @@ function plansListHTML() {
     <button class="btn small" data-act="edit" data-id="${s.id}" data-date="${s.kind === "once" ? s.on_date : state.today}" data-back="plans">変更</button>
     <button class="btn small danger" data-act="delete" data-id="${s.id}">削除</button></li>`).join("")
     || `<li class="hint">予定はまだありません。</li>`;
+}
+
+// ---------- レスキューカード ----------
+// 家族だけが見られる。カードは未入力の項目があっても開ける。写真は元の画像のまま扱う。
+const rescue = { profile: null, clothes: [], urls: new Map(), withPrivate: false, file: null, imageUrl: null, faceFile: null };
+const CARD_FONT = '"Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif';
+
+async function photoUrl(path) {
+  if (!path) return null;
+  if (rescue.urls.has(path)) return rescue.urls.get(path);
+  const { data, error } = await sb.storage.from("rescue").download(path);
+  if (error || !data) return null;
+  const u = URL.createObjectURL(data);
+  rescue.urls.set(path, u);
+  return u;
+}
+
+async function loadRescue() {
+  const [p, c] = await Promise.all([
+    sb.from("rescue_profiles").select("*").maybeSingle(),
+    sb.from("rescue_clothes").select("*").order("sort_order").order("created_at"),
+  ]);
+  if (p.error) throw p.error;
+  if (c.error) throw c.error;
+  rescue.profile = p.data || null;
+  rescue.clothes = c.data || [];
+  await Promise.all([rescue.profile?.face_photo_path, ...rescue.clothes.map((x) => x.photo_path)].filter(Boolean).map(photoUrl));
+}
+
+async function openRescue(v) {
+  try {
+    await loadRescue();
+  } catch (e) {
+    setHTML($("rescue-root"), `<p class="error">読み込めませんでした：${esc(errMsg(e))}</p><button class="btn" data-act="rescue-retry">もう一度読み込む</button>`);
+    return;
+  }
+  if (state.view !== v) return;
+  if (v === "rescue") {
+    // 開いた記録（月報の材料。緊急事態の件数としては扱わない）
+    sb.from("activity_log").insert({ household_id: state.member.household_id, kind: "rescue_card_opened" }).then(() => {});
+    renderRescueCard();
+  } else {
+    $("rescue-root").outerHTML = rescueEditHTML();
+    renderClothesEdit();
+  }
+}
+
+function renderRescueCard() {
+  const p = rescue.profile || {};
+  const rows = R.cardRows(p, rescue.clothes, state.today, { withPrivate: true });
+  const get = (k) => rows.find((r) => r.key === k);
+  const val = (k) => get(k).value ? esc(get(k).value) : `<span class="rc-empty">未登録</span>`;
+  const face = rescue.urls.get(p.face_photo_path);
+  const faceDates = [p.face_photo_taken_on ? `撮影 ${R.ymd(p.face_photo_taken_on)}ごろ` : "撮影日 不明",
+    p.face_photo_uploaded_at ? `登録 ${R.ymd(String(p.face_photo_uploaded_at).slice(0, 10))}` : ""].filter(Boolean).join("／");
+  const clothes = rescue.clothes.map((c) => {
+    const u = rescue.urls.get(c.photo_path);
+    return `<figure class="rc-cloth">${u ? `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(c.note || "よく着る服")}"></a>` : `<div class="rc-noimg">写真なし</div>`}
+      <figcaption>${esc(c.note || "")}</figcaption></figure>`;
+  }).join("");
+  $("rescue-root").outerHTML = `
+  <section class="rescue-card" id="rescue-root">
+    ${rescue.profile ? "" : `<div class="rc-start"><strong>まだ登録されていません</strong><p class="hint">いざという時のために、最近の顔写真と身長などを入れておきましょう。分かる項目だけで大丈夫です。</p><a class="btn primary" href="#rescue-edit">内容を入れる</a></div>`}
+    <div class="rc-top">
+      <figure class="rc-face">${face ? `<a href="${face}" target="_blank" rel="noopener"><img src="${face}" alt="最近の顔写真"></a>` : `<div class="rc-noimg">顔写真なし</div>`}
+        <figcaption>${esc(faceDates)}${face ? `<br><a href="${face}" target="_blank" rel="noopener">元の写真を開く</a>` : ""}</figcaption></figure>
+      <div class="rc-big">
+        <p class="rc-name">${get("name").value ? esc(get("name").value) : `<span class="rc-empty">名前：未登録</span>`}</p>
+        ${get("age").value ? `<p class="rc-age">${esc(get("age").value)}</p>` : ""}
+        <dl class="rc-stats">
+          ${["height", "weight", "shoe"].map((k) => `<div><dt>${get(k).label}</dt><dd>${get(k).main ? esc(get(k).main) : `<span class="rc-empty">未登録</span>`}</dd>${get(k).note ? `<p class="rc-note">${esc(get(k).note)}</p>` : ""}</div>`).join("")}
+        </dl>
+      </div>
+    </div>
+    <dl class="rc-rows">
+      ${["features", "belongings", "notes", "birth", "address"].map((k) => `<div><dt>${get(k).label}</dt><dd>${val(k)}</dd></div>`).join("")}
+    </dl>
+    <h3>よく着る服</h3>
+    <p class="hint">このうちどれかを着ていることが多い</p>
+    <div class="rc-clothes">${clothes || `<p class="rc-empty">未登録</p>`}</div>
+    <p class="hint">${p.updated_at ? `情報の更新 ${esc(R.ymd(String(p.updated_at).slice(0, 10)))}` : "まだ登録されていません"}　<a href="#rescue-edit">内容を直す</a></p>
+  </section>
+  <section class="card">
+    <h2>見せる・読み上げる・送る</h2>
+    <label class="check"><input type="checkbox" id="rc-private"> 住所と生年月日も入れる（警察に伝えるときなど）</label>
+    <label class="field"><span>文字（読み上げ・コピー用）</span><textarea id="rc-text" readonly rows="8"></textarea></label>
+    <div class="row">
+      <button class="btn" type="button" data-act="rc-copy">文字をコピー</button>
+      <button class="btn primary" type="button" data-act="rc-share" id="rc-share" disabled>画像を作っています…</button>
+    </div>
+    <div id="rc-out"></div>
+    <details><summary>スマホのホーム画面から直接開くには</summary>
+      <p class="hint">このページを開いたまま、iPhoneはSafariの共有ボタン→「ホーム画面に追加」、AndroidはChromeのメニュー→「ホーム画面に追加」。<br>
+      アドレス：<span class="num">${esc(location.href.split("#")[0])}#rescue</span></p>
+    </details>
+  </section>`;
+  $("rc-private").checked = rescue.withPrivate;
+  prepareShare();
+}
+
+async function prepareShare() {
+  const p = rescue.profile || {};
+  $("rc-text").value = R.cardText(p, rescue.clothes, state.today, { withPrivate: rescue.withPrivate });
+  const btn = $("rc-share");
+  btn.disabled = true; btn.textContent = "画像を作っています…";
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    const blob = await R.cardImage({ profile: p, clothes: rescue.clothes, todayStr: state.today, withPrivate: rescue.withPrivate,
+      faceUrl: rescue.urls.get(p.face_photo_path), clothesUrls: rescue.clothes.map((c) => rescue.urls.get(c.photo_path)), font: CARD_FONT });
+    if (rescue.imageUrl) URL.revokeObjectURL(rescue.imageUrl);
+    rescue.imageUrl = URL.createObjectURL(blob);
+    rescue.file = new File([blob], "kurukku-card.jpg", { type: "image/jpeg" });
+    if (state.view !== "rescue" || !$("rc-share")) return;
+    btn.disabled = false;
+    btn.textContent = navigator.canShare?.({ files: [rescue.file] }) ? "画像と文字を送る" : "画像を表示する";
+  } catch (e) {
+    btn.textContent = "画像を作れませんでした";
+  }
+}
+
+async function shareCard() {
+  const text = $("rc-text").value;
+  if (rescue.file && navigator.canShare?.({ files: [rescue.file] })) {
+    try { await navigator.share({ files: [rescue.file], text }); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  setHTML($("rc-out"), `<p class="hint">画像を長押し（パソコンは右クリック）して保存できます。</p><img class="rc-share-img" src="${rescue.imageUrl}" alt="送るための画像">`);
+}
+
+function rescueEditHTML() {
+  const p = rescue.profile || {};
+  const v = (x) => esc(x ?? "");
+  const num = (id, label, unit, value, approx, on) => `
+    <fieldset><legend>${label}</legend>
+      <div class="row">
+        <label class="field"><span>${unit}</span><input type="number" inputmode="decimal" step="0.1" min="0" id="rs-${id}" value="${v(value)}"></label>
+        <label class="field"><span>測った日</span><input type="date" id="rs-${id}-on" value="${v(on)}"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="rs-${id}-approx" ${approx ? "checked" : ""}> 正確でない（「約」を付ける）</label>
+    </fieldset>`;
+  const face = rescue.urls.get(p.face_photo_path);
+  return `<form class="card" id="rescue-form" novalidate>
+    <h2>レスキューカードの内容</h2>
+    <p class="hint">分からない項目は空欄のままで保存できます。家族の役割の人だけが見られます（表示端末には出ません）。</p>
+    <fieldset><legend>最近の顔写真</legend>
+      <div id="rs-face-preview">${face ? `<img class="rs-thumb" src="${face}" alt="いまの顔写真">` : `<p class="hint">まだありません</p>`}</div>
+      <label class="field"><span>写真を選ぶ（加工せず元の画像のまま保存します）</span><input type="file" id="rs-face" accept="image/*"></label>
+      <label class="field"><span>撮影日（分かる範囲で）</span><input type="date" id="rs-face-taken" value="${v(p.face_photo_taken_on)}"></label>
+    </fieldset>
+    <label class="field"><span>名前</span><input type="text" id="rs-name" maxlength="40" value="${v(p.full_name)}"></label>
+    <label class="field"><span>生年月日</span><input type="date" id="rs-birth" value="${v(p.birth_date)}"></label>
+    ${num("height", "身長", "cm", p.height_cm, p.height_approx, p.height_measured_on)}
+    ${num("weight", "体重", "kg", p.weight_kg, p.weight_approx, p.weight_measured_on)}
+    ${num("shoe", "靴のサイズ", "cm", p.shoe_cm, p.shoe_approx, p.shoe_measured_on)}
+    <label class="field"><span>身体の特徴（髪型・眼鏡・歩き方など）</span><textarea id="rs-features" maxlength="300">${v(p.features)}</textarea></label>
+    <label class="field"><span>いつもの持ち物</span><textarea id="rs-belongings" maxlength="300">${v(p.belongings)}</textarea></label>
+    <label class="field"><span>住所</span><input type="text" id="rs-address" maxlength="120" value="${v(p.address)}"></label>
+    <label class="field"><span>その他、伝えたいこと</span><textarea id="rs-notes" maxlength="400">${v(p.notes)}</textarea></label>
+    <div class="row">
+      <button class="btn primary" type="submit" id="rs-submit">保存する</button>
+      <a class="btn" href="#rescue">カードを見る</a>
+    </div>
+  </form>
+  <section class="card">
+    <h2>よく着る服</h2>
+    <p class="hint">毎日入れる必要はありません。よく着る服を登録しておくと、いざという時に「このうちどれか」として見せられます（6枚まで）。</p>
+    <div class="rc-clothes" id="rs-clothes"></div>
+    <form id="cloth-form" class="row">
+      <label class="field"><span>服の写真</span><input type="file" id="cloth-photo" accept="image/*"></label>
+      <label class="field"><span>ひとこと（例：紺のジャンパー）</span><input type="text" id="cloth-note" maxlength="60"></label>
+      <button class="btn" type="submit">追加</button>
+    </form>
+  </section>`;
+}
+
+function renderClothesEdit() {
+  setHTML($("rs-clothes"), rescue.clothes.map((c) => {
+    const u = rescue.urls.get(c.photo_path);
+    return `<figure class="rc-cloth">${u ? `<img src="${u}" alt="${esc(c.note || "よく着る服")}">` : `<div class="rc-noimg">写真なし</div>`}
+      <figcaption>${esc(c.note || "")}</figcaption>
+      <button class="btn small danger" type="button" data-act="cloth-delete" data-id="${c.id}">削除</button></figure>`;
+  }).join("") || `<p class="hint">まだありません</p>`);
+}
+
+function photoExt(file) {
+  return ({ "image/jpeg": "jpg", "image/png": "png", "image/heic": "heic", "image/heif": "heif", "image/webp": "webp" })[file.type] || "jpg";
+}
+function localDate(ms) {
+  return S.nowParts(new Date(ms), TIMEZONE).date;
+}
+
+async function uploadPhoto(file, prefix) {
+  if (!file) return null;
+  if (file.size > 20 * 1024 * 1024) throw new Error("写真が大きすぎます（20MBまで）");
+  const path = `${state.member.household_id}/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${photoExt(file)}`;
+  const { error } = await sb.storage.from("rescue").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+async function submitRescue() {
+  const val = (id) => $(id).value.trim();
+  const numv = (id) => { const x = $(id).value; return x === "" ? null : Number(x); };
+  const row = {
+    household_id: state.member.household_id,
+    full_name: val("rs-name") || null,
+    birth_date: $("rs-birth").value || null,
+    height_cm: numv("rs-height"), height_approx: $("rs-height-approx").checked, height_measured_on: $("rs-height-on").value || null,
+    weight_kg: numv("rs-weight"), weight_approx: $("rs-weight-approx").checked, weight_measured_on: $("rs-weight-on").value || null,
+    shoe_cm: numv("rs-shoe"), shoe_approx: $("rs-shoe-approx").checked, shoe_measured_on: $("rs-shoe-on").value || null,
+    features: val("rs-features") || null, belongings: val("rs-belongings") || null,
+    address: val("rs-address") || null, notes: val("rs-notes") || null,
+    face_photo_taken_on: $("rs-face-taken").value || null,
+  };
+  for (const k of ["height_cm", "weight_kg", "shoe_cm"]) if (row[k] !== null && !(row[k] > 0)) throw new Error("身長・体重・靴のサイズは、正の数で入れてください");
+  const oldPath = rescue.profile?.face_photo_path || null;
+  const file = $("rs-face").files[0];
+  let newPath = null;
+  if (file) {
+    newPath = await uploadPhoto(file, "face");
+    row.face_photo_path = newPath;
+    row.face_photo_uploaded_at = new Date().toISOString();
+  }
+  const { error } = await sb.from("rescue_profiles").upsert(row, { onConflict: "household_id" });
+  if (error) {
+    if (newPath) await sb.storage.from("rescue").remove([newPath]);  // 保存できなかった写真は残さない
+    throw error;
+  }
+  if (newPath && oldPath) await sb.storage.from("rescue").remove([oldPath]);
+  toast("保存しました");
+  location.hash = "#rescue";
 }
 
 // ---------- 予定の変更 ----------
@@ -810,6 +1045,20 @@ $app.addEventListener("click", async (e) => {
     const { error } = await sb.from("schedule_exceptions").delete().eq("schedule_id", id).eq("on_date", state.today);
     if (error) throw error; toast("中止を取り消しました"); await refresh();
   });
+  if (act === "rescue-retry") openRescue(state.view);
+  if (act === "rc-copy") {
+    const t = $("rc-text");
+    try { await navigator.clipboard.writeText(t.value); toast("文字をコピーしました"); }
+    catch (_) { t.focus(); t.select(); toast("文字を選択しました。長押しでコピーしてください"); }
+  }
+  if (act === "rc-share") shareCard();
+  if (act === "cloth-delete") { if (needsConfirm(btn, "もう一度押すと削除")) return; guarded(btn, async () => {
+    const c = rescue.clothes.find((x) => x.id === id);
+    const { error } = await sb.from("rescue_clothes").delete().eq("id", id);
+    if (error) throw error;
+    if (c?.photo_path) await sb.storage.from("rescue").remove([c.photo_path]);
+    await loadRescue(); renderClothesEdit(); toast("削除しました");
+  }); }
   if (act === "edit") {
     const s = state.schedules.find((x) => x.id === id);
     edit = { id, date: btn.dataset.date || state.today, scope: null, weekdays: new Set((s?.weekdays || []).map(Number)), back: btn.dataset.back || "plans" };
@@ -857,6 +1106,14 @@ $app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "nigh
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
+  if (e.target.id === "rc-private") { rescue.withPrivate = e.target.checked; setHTML($("rc-out"), ""); prepareShare(); }
+  if (e.target.id === "rs-face") {
+    const f = e.target.files[0];
+    if (f) {
+      $("rs-face-preview").innerHTML = `<img class="rs-thumb" src="${URL.createObjectURL(f)}" alt="選んだ写真">`;
+      if (!$("rs-face-taken").value && f.lastModified) $("rs-face-taken").value = localDate(f.lastModified);
+    }
+  }
 });
 
 $app.addEventListener("submit", async (e) => {
@@ -874,6 +1131,18 @@ $app.addEventListener("submit", async (e) => {
   });
   if (form.id === "add-form") return guarded(btn, submitSchedule);
   if (form.id === "edit-form") return guarded(btn, submitEdit);
+  if (form.id === "rescue-form") return guarded(btn, submitRescue);
+  if (form.id === "cloth-form") return guarded(btn, async () => {
+    if (rescue.clothes.length >= 6) throw new Error("よく着る服は6枚までです。先に1枚削除してください");
+    const f = $("cloth-photo").files[0];
+    const note = $("cloth-note").value.trim();
+    if (!f && !note) throw new Error("写真かひとことを入れてください");
+    const path = await uploadPhoto(f, "clothes");
+    const { error } = await sb.from("rescue_clothes").insert({ photo_path: path, note: note || null, sort_order: rescue.clothes.length });
+    if (error) { if (path) await sb.storage.from("rescue").remove([path]); throw error; }
+    form.reset();
+    await loadRescue(); renderClothesEdit(); toast("追加しました");
+  });
   if (form.id === "msg-form") return guarded(btn, submitMessage);
   if (form.id === "night-form") return guarded(btn, async () => {
     const a = $("night-start").value, b = $("night-end").value;
