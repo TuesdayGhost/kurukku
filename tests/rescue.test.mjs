@@ -25,11 +25,13 @@ test("未入力の項目があってもカードの文字を作れる（空欄�
   assert.equal(t2, "【本人の情報（家族より）】\n名前：テスト 太郎\n身長：約165cm（2026年11月測定）\nよく着る服：紺のジャンパー／グレーの帽子\n（2026年11月4日更新）");
 });
 
-test("住所・生年月日は含めない設定にできる", () => {
+test("生年月日は年齢と一緒にいつも出す。住所は含めない設定にできる（11/4）", () => {
   const p = { full_name: "テスト 太郎", birth_date: "1948-05-01", address: "どこか市" };
-  assert.ok(R.cardText(p, [], "2026-11-04").includes("住所：どこか市"));
-  const t = R.cardText(p, [], "2026-11-04", { withPrivate: false });
-  assert.ok(!t.includes("住所"));
-  assert.ok(!t.includes("生年月日"));
-  assert.ok(t.includes("年齢：78歳"));
+  const t = R.cardText(p, [], "2026-11-04");
+  assert.ok(t.includes("年齢：78歳（1948年5月1日生まれ）"));
+  assert.ok(t.includes("住所：どこか市"));
+  const t2 = R.cardText(p, [], "2026-11-04", { withAddress: false });
+  assert.ok(!t2.includes("住所"));
+  assert.ok(t2.includes("1948年5月1日生まれ"));
+  assert.equal(R.cardText({ full_name: "x" }, [], "2026-11-04").includes("年齢"), false);
 });

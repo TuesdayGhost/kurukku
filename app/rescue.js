@@ -40,13 +40,16 @@ export function age(birthDate, todayStr) {
   return a >= 0 ? a : null;
 }
 
-/** カードの各行（ラベルと値）。空の項目は value が "" */
-export function cardRows(p, clothes, todayStr, { withPrivate = true } = {}) {
+/**
+ * カードの各行（ラベルと値）。空の項目は value が ""
+ * 生年月日は年齢と一緒にいつも出す（11/4 決定）。withAddress のときだけ住所を入れる。
+ */
+export function cardRows(p, clothes, todayStr, { withAddress = true } = {}) {
   p = p || {};
   const a = age(p.birth_date, todayStr);
   const rows = [
     { key: "name", label: "名前", value: p.full_name || "" },
-    { key: "age", label: "年齢", value: a !== null ? `${a}歳` : "" },
+    { key: "age", label: "年齢", value: p.birth_date ? `${a !== null ? `${a}歳` : ""}（${ymd(p.birth_date)}生まれ）` : "" },
     { key: "height", label: "身長", value: measure(p.height_cm, "cm", p.height_approx, p.height_measured_on), ...measureParts(p.height_cm, "cm", p.height_approx, p.height_measured_on) },
     { key: "weight", label: "体重", value: measure(p.weight_kg, "kg", p.weight_approx, p.weight_measured_on), ...measureParts(p.weight_kg, "kg", p.weight_approx, p.weight_measured_on) },
     { key: "shoe", label: "靴のサイズ", value: measure(p.shoe_cm, "cm", p.shoe_approx, p.shoe_measured_on), ...measureParts(p.shoe_cm, "cm", p.shoe_approx, p.shoe_measured_on) },
@@ -55,10 +58,7 @@ export function cardRows(p, clothes, todayStr, { withPrivate = true } = {}) {
     { key: "clothes", label: "よく着る服", value: (clothes || []).map((c) => c.note).filter(Boolean).join("／") },
     { key: "notes", label: "その他", value: p.notes || "" },
   ];
-  if (withPrivate) {
-    rows.push({ key: "birth", label: "生年月日", value: p.birth_date ? ymd(p.birth_date) : "" });
-    rows.push({ key: "address", label: "住所", value: p.address || "" });
-  }
+  if (withAddress) rows.push({ key: "address", label: "住所", value: p.address || "" });
   return rows;
 }
 
@@ -105,7 +105,7 @@ function loadImage(url) {
  * 1枚の画像（縦長 1080×1600）を作り、Blob を返す。
  * faceUrl / clothes[i].url はこの端末の中の一時的なURL（blob:）。
  */
-export async function cardImage({ profile, clothes, todayStr, withPrivate, faceUrl, clothesUrls = [], font }) {
+export async function cardImage({ profile, clothes, todayStr, withAddress, faceUrl, clothesUrls = [], font }) {
   const W = 1080, H = 1920, M = 56;
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
@@ -133,13 +133,13 @@ export async function cardImage({ profile, clothes, todayStr, withPrivate, faceU
   }
 
   // 右側：名前と大きな数字
-  const rows = cardRows(profile, clothes, todayStr, { withPrivate });
+  const rows = cardRows(profile, clothes, todayStr, { withAddress });
   const get = (k) => rows.find((r) => r.key === k)?.value || "";
   const rx = M + photoW + 44, rw = W - rx - M;
   let y = photoY;
   ctx.font = F(56, 700);
   for (const l of wrapLines(ctx, get("name") || "（名前未登録）", rw)) { ctx.fillText(l, rx, y); y += 70; }
-  if (get("age")) { ctx.font = F(36); ctx.fillText(get("age"), rx, y); y += 56; }
+  if (get("age")) { ctx.font = F(32); for (const l of wrapLines(ctx, get("age"), rw)) { ctx.fillText(l, rx, y); y += 44; } y += 12; }
   y += 16;
   for (const k of ["height", "weight", "shoe"]) {
     const r = rows.find((x) => x.key === k);
@@ -152,7 +152,7 @@ export async function cardImage({ profile, clothes, todayStr, withPrivate, faceU
 
   // 下側：その他の項目
   y = Math.max(y, photoY + photoH + 60);
-  for (const k of ["features", "belongings", "clothes", "notes", "birth", "address"]) {
+  for (const k of ["features", "belongings", "clothes", "notes", "address"]) {
     const v = get(k);
     if (!v || y > H - 120) continue;
     const label = rows.find((x) => x.key === k).label;

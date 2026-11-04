@@ -505,7 +505,7 @@ function plansListHTML() {
 
 // ---------- レスキューカード ----------
 // 家族だけが見られる。カードは未入力の項目があっても開ける。写真は元の画像のまま扱う。
-const rescue = { profile: null, clothes: [], urls: new Map(), withPrivate: false, file: null, imageUrl: null, faceFile: null };
+const rescue = { profile: null, clothes: [], urls: new Map(), withAddress: false, file: null, imageUrl: null, faceFile: null };
 const CARD_FONT = '"Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif';
 
 async function photoUrl(path) {
@@ -550,7 +550,7 @@ async function openRescue(v) {
 
 function renderRescueCard() {
   const p = rescue.profile || {};
-  const rows = R.cardRows(p, rescue.clothes, state.today, { withPrivate: true });
+  const rows = R.cardRows(p, rescue.clothes, state.today, { withAddress: true });
   const get = (k) => rows.find((r) => r.key === k);
   const val = (k) => get(k).value ? esc(get(k).value) : `<span class="rc-empty">未登録</span>`;
   const face = rescue.urls.get(p.face_photo_path);
@@ -576,7 +576,7 @@ function renderRescueCard() {
       </div>
     </div>
     <dl class="rc-rows">
-      ${["features", "belongings", "notes", "birth", "address"].map((k) => `<div><dt>${get(k).label}</dt><dd>${val(k)}</dd></div>`).join("")}
+      ${["features", "belongings", "notes", "address"].map((k) => `<div><dt>${get(k).label}</dt><dd>${val(k)}</dd></div>`).join("")}
     </dl>
     <h3>よく着る服</h3>
     <p class="hint">このうちどれかを着ていることが多い</p>
@@ -585,7 +585,7 @@ function renderRescueCard() {
   </section>
   <section class="card">
     <h2>見せる・読み上げる・送る</h2>
-    <label class="check"><input type="checkbox" id="rc-private"> 住所と生年月日も入れる（警察に伝えるときなど）</label>
+    <label class="check"><input type="checkbox" id="rc-private"> 住所も入れる（警察に伝えるときなど）</label>
     <label class="field"><span>文字（読み上げ・コピー用）</span><textarea id="rc-text" readonly rows="8"></textarea></label>
     <div class="row">
       <button class="btn" type="button" data-act="rc-copy">文字をコピー</button>
@@ -597,18 +597,18 @@ function renderRescueCard() {
       アドレス：<span class="num">${esc(location.href.split("#")[0])}#rescue</span></p>
     </details>
   </section>`;
-  $("rc-private").checked = rescue.withPrivate;
+  $("rc-private").checked = rescue.withAddress;
   prepareShare();
 }
 
 async function prepareShare() {
   const p = rescue.profile || {};
-  $("rc-text").value = R.cardText(p, rescue.clothes, state.today, { withPrivate: rescue.withPrivate });
+  $("rc-text").value = R.cardText(p, rescue.clothes, state.today, { withAddress: rescue.withAddress });
   const btn = $("rc-share");
   btn.disabled = true; btn.textContent = "画像を作っています…";
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    const blob = await R.cardImage({ profile: p, clothes: rescue.clothes, todayStr: state.today, withPrivate: rescue.withPrivate,
+    const blob = await R.cardImage({ profile: p, clothes: rescue.clothes, todayStr: state.today, withAddress: rescue.withAddress,
       faceUrl: rescue.urls.get(p.face_photo_path), clothesUrls: rescue.clothes.map((c) => rescue.urls.get(c.photo_path)), font: CARD_FONT });
     if (rescue.imageUrl) URL.revokeObjectURL(rescue.imageUrl);
     rescue.imageUrl = URL.createObjectURL(blob);
@@ -1106,7 +1106,7 @@ $app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "nigh
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
-  if (e.target.id === "rc-private") { rescue.withPrivate = e.target.checked; setHTML($("rc-out"), ""); prepareShare(); }
+  if (e.target.id === "rc-private") { rescue.withAddress = e.target.checked; setHTML($("rc-out"), ""); prepareShare(); }
   if (e.target.id === "rs-face") {
     const f = e.target.files[0];
     if (f) {
