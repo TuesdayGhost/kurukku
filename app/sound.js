@@ -132,8 +132,21 @@ async function chimeOnce(kind = chimeKind) {
   const g = ctx.createGain();
   g.gain.value = 0.85;
   src.connect(g).connect(ctx.destination);
+  playing.add(src);
   src.start();
   await new Promise((r) => { src.onended = r; setTimeout(r, len * 1000 + 300); });
+  playing.delete(src);
+}
+
+// ---------- さわると止まる（11/4 決定。WCAG 2.2 SC 1.4.2 の「止める手段」） ----------
+const playing = new Set();
+let generation = 0;
+/** 鳴っているお知らせの音と読み上げを止め、順番待ちも取りやめる */
+export function stopAll() {
+  generation++;
+  for (const src of playing) { try { src.stop(); } catch (_) { /* もう止まっている */ } }
+  playing.clear();
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
 }
 
 function speakNow(text) {
@@ -162,13 +175,15 @@ export function isBusy() { return announcing > 0; }
 export function announce({ times = 2, text = "", kind = chimeKind } = {}) {
   announcing++;
   if (KINDS[kind]?.once) times = Math.min(times, 1);
+  const gen = generation;
   queue = queue.then(async () => {
     try {
       for (let i = 0; i < times; i++) {
+        if (gen !== generation) return;          // 止められたら、残りは鳴らさない
         await chimeOnce(kind);
         if (i < times - 1) await wait(800);
       }
-      if (text) { await wait(400); await speakNow(text); }
+      if (text && gen === generation) { await wait(400); if (gen === generation) await speakNow(text); }
     } catch (_) { /* 音が出せなくても表示は続ける */ }
     finally { announcing--; }
   });

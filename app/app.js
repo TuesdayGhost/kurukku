@@ -258,7 +258,9 @@ async function logNotice(s, date, key) {
   if (error) loggedNotices.delete(key);  // 次の秒にもう一度試す
 }
 
-async function onAnyTap() {
+async function onAnyTap(e) {
+  // お知らせ中に通知画面にさわったら、音と読み上げを止める（表示はそのまま）
+  if (state.view === "display" && e?.target?.closest?.(".notice") && sound.isBusy()) { sound.stopAll(); return; }
   if (!state.member || sound.isReady()) return;
   if (role() === "family" && state.view !== "display") return;  // 家族のスマホは鳴らさない
   const ok = await sound.unlock();
@@ -302,11 +304,9 @@ function weatherHTML(np) {
   }
   const r = (v) => (v == null ? "－" : Math.round(v));
   const old = state.weatherError || Date.now() - w.fetchedAt > WEATHER_STALE_MS;
-  const sub = [];
-  if (w.now != null) sub.push(`いまの外の気温 ${r(w.now)}℃`);
-  if (w.pop != null) sub.push(`雨の確率 ${r(w.pop)}%`);
+  // ふだんは天気と最高・最低気温だけ（予定の場所を広く取るため。11/4）。古いときだけ注意を出す
   return `<p class="w-main">${esc(w.text || "天気")}<span class="w-temp">最高 ${r(w.max)}℃／最低 ${r(w.min)}℃</span></p>
-    <p class="w-sub">${sub.map(esc).join("　")}<span class="${old ? "w-old" : ""}">（${jstHM(new Date(w.fetchedAt))} の情報${old ? "・更新できていません" : ""}）</span></p>`;
+    ${old ? `<p class="w-sub"><span class="w-old">（${jstHM(new Date(w.fetchedAt))} の情報・更新できていません）</span></p>` : ""}`;
 }
 
 // ---------- 表示画面 ----------
@@ -361,8 +361,10 @@ function updateDisplay(np, occ, active) {
   const groups = patientFirst().map((p) => {
     const items = shown.filter((s) => s.person_id === p.id);
     const li = items.map((s) => {
-      const what = p.is_patient ? (s.display_text || s.title) : s.title;
-      return `<li><span class="t">${esc(S.timeLabel(s))}</span><span class="what">${esc(what)}</span></li>`;
+      // 本人は開始の時刻だけ（デイの終わりなどは使わない。11/4）。家族は「いつ戻るか」まで出す
+      const t = p.is_patient ? S.hm(s.start_time) : S.timeLabel(s);
+      const sub = s.display_text ? `<span class="sub">${esc(s.display_text)}</span>` : "";
+      return `<li><span class="t">${esc(t)}</span><span class="what">${esc(s.title)}${sub}</span></li>`;
     }).join("");
     return `<div class="who ${p.is_patient ? "patient" : ""}"><h2>${esc(p.name)}</h2>${li ? `<ul>${li}</ul>` : `<p class="none">このあとの予定はありません</p>`}</div>`;
   }).join("");
@@ -387,7 +389,7 @@ function updateDisplay(np, occ, active) {
   if (active.length) {
     const items = active.map((s) => {
       const p = person(s.person_id);
-      return `<div class="item">${p && !p.is_patient ? `<div class="who-n">${esc(p.name)}</div>` : ""}<div class="what-n">${esc(s.display_text || s.title)}</div>${s.start_time ? `<div class="time-n">${esc(S.hm(s.start_time))}</div>` : ""}</div>`;
+      return `<div class="item">${p && !p.is_patient ? `<div class="who-n">${esc(p.name)}</div>` : ""}<div class="what-n">${esc(s.title)}</div>${s.display_text ? `<div class="sub-n">${esc(s.display_text)}</div>` : ""}${s.start_time ? `<div class="time-n">${esc(S.hm(s.start_time))}</div>` : ""}</div>`;
     }).join("");
     setHTML($("notice"), `<div class="notice ${active.length > 1 ? "many" : ""}" role="alert">
       <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${np.time.slice(0, 5)}</span></div>
@@ -519,7 +521,7 @@ function scheduleLine(s, extra = "") {
   if (s.notify_from) badges.push(`お知らせ ${S.hm(s.notify_from)}〜${S.hm(s.notify_until)}${s.notify_sound ? "" : "（音なし）"}`);
   return `<div class="main"><strong class="num">${esc(S.timeLabel(s) || "時刻なし")}</strong>　${esc(s.title)}
     <span class="badge">${esc(p ? p.name : "?")}</span>${badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}
-    ${s.display_text ? `<div class="sub">表示：${esc(s.display_text)}</div>` : ""}
+    ${s.display_text ? `<div class="sub">添える一言：${esc(s.display_text)}</div>` : ""}
     ${s.family_memo ? `<div class="sub">家族メモ：${esc(s.family_memo)}${s.memo_for_gazette ? "（月報に使う）" : ""}</div>` : ""}
     ${extra}</div>`;
 }
@@ -1015,7 +1017,7 @@ function editFormHTML() {
       <label class="field"><span>お知らせ終了</span><input type="time" id="ed-nuntil" value="${t(s.notify_until)}"></label>
       <label class="check"><input type="checkbox" id="ed-nsound" ${s.notify_from && !s.notify_sound ? "" : "checked"}> 鳩の音と読み上げ</label>
     </div>
-    <label class="field"><span>本人向けの表示文（空なら用件をそのまま表示）</span><input type="text" id="ed-display" maxlength="60" value="${esc(s.display_text || "")}"></label>
+    <label class="field"><span>本人の画面に小さく添える一言（20文字まで。例：芋煮会と運動会）</span><input type="text" id="ed-display" maxlength="20" value="${esc(s.display_text || "")}"></label>
     <label class="field"><span>家族メモ（本人の画面には出ません）</span><textarea id="ed-memo" maxlength="400">${esc(s.family_memo || "")}</textarea></label>
     <label class="check"><input type="checkbox" id="ed-gazette" ${s.memo_for_gazette ? "checked" : ""}> このメモを鳩月報に使ってよい</label>
     <label class="check"><input type="checkbox" id="ed-home" ${s.show_on_home === false ? "" : "checked"}> 本人のふだんの画面にも出す（外すと、お知らせのときだけ出ます）</label>
@@ -1123,7 +1125,7 @@ function addFormHTML(full) {
           <label class="check"><input type="checkbox" id="add-nsound" checked> 鳩の音と読み上げ</label>
         </div>
         <p class="hint">追加しただけでは鳴りません。鳴るのは、お知らせ開始の時刻になったときだけです。</p>
-        <label class="field"><span>本人向けの表示文（空なら用件をそのまま表示）</span><input type="text" id="add-display" maxlength="60" placeholder="例：今日はデイで紅葉を見に行きます。お迎え9時"></label>
+        <label class="field"><span>本人の画面に小さく添える一言（20文字まで）</span><input type="text" id="add-display" maxlength="20" placeholder="例：芋煮会と運動会"></label>
         <label class="field"><span>家族メモ（本人の画面には出ません）</span><textarea id="add-memo" maxlength="400"></textarea></label>
         <label class="check"><input type="checkbox" id="add-gazette"> このメモを鳩月報に使ってよい</label>
         <label class="check"><input type="checkbox" id="add-home" checked> 本人のふだんの画面にも出す（外すと、お知らせのときだけ出ます。ごはん・お薬は最初から外れています）</label>

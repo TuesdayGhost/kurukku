@@ -34,7 +34,7 @@ begin
     (hid, dad, '夕ごはん',   'weekly', '{0,1,2,3,4,5,6}', '2026-10-01', '18:30', '18:20', '18:35');
   -- デイ（月・木）
   insert into public.schedules (household_id, person_id, title, display_text, kind, weekdays, valid_from, start_time, end_time, notify_from, notify_until) values
-    (hid, dad, 'デイ', 'お迎えは9時です', 'weekly', '{1,4}', '2026-10-01', '09:00', '16:00', '08:50', '09:05');
+    (hid, dad, 'デイ', null, 'weekly', '{1,4}', '2026-10-01', '09:00', '17:00', '08:50', '09:05');
   -- お母さん：毎週水曜の買い物
   insert into public.schedules (household_id, person_id, title, kind, weekdays, valid_from, start_time, end_time) values
     (hid, mom, '買い物', 'weekly', '{3}', '2026-10-01', '14:00', '15:30');

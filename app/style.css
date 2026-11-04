@@ -252,3 +252,18 @@ body.is-night .pigeon-btn { background: var(--night-bg); border-color: var(--nig
   padding: 0.4em 0.9em; font-size: clamp(18px, 4vmin, 44px); font-weight: 700; white-space: nowrap;
 }
 body.is-night .coo-bubble { background: var(--night-bg); color: var(--night-fg); border-color: var(--night-muted); }
+
+/* 11/4 本人の画面の文字を太く・大きく（葵依さん：細くて小さい）。長い文はお知らせのときだけ */
+.who h2 { font-weight: 700; }
+.who ul { font-weight: 500; }
+.who.patient ul { font-size: clamp(26px, 6.4vmin, 78px); font-weight: 700; }
+.who:not(.patient) ul { font-size: clamp(22px, 5vmin, 60px); }
+.who li .t { color: var(--fg); font-weight: 500; font-size: 0.78em; }
+.who li .what .sub { display: block; font-size: 0.6em; font-weight: 500; color: var(--muted); line-height: 1.3; }
+.msg { font-weight: 500; }
+.news { padding-right: clamp(72px, 13vmin, 140px); }   /* 右下の鳩と重ならない */
+.status-line { font-weight: 500; }
+.notice .item .sub-n { font-size: clamp(26px, 6.5vmin, 80px); font-weight: 700; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+/* 表示画面は画面の高さに収める（予定が多いときは予定の欄の中で切れ、下の知らせ・状態の行は必ず見える） */
+body[data-view="display"] #app { height: 100%; }
+.display > .when, .display > .plan { min-height: 0; }
