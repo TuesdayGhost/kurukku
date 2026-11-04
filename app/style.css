@@ -322,3 +322,5 @@ body.is-night .pigeon-btn { color: var(--night-muted); --pigeon-bg: var(--night-
 .gz-titles { display: grid; gap: 4px; justify-items: start; }
 .gz-wordmark { color: var(--gz-ink); --pigeon-bg: var(--gz-paper); line-height: 0; }
 .gz-wordmark .wordmark { height: 36px; width: auto; display: block; }
+/* 右下の鳩は画面の内側（左）を向く（11/5 葵依：外を向いていたので左右反転） */
+.pigeon-btn .pigeon-ic { transform: scaleX(-1); }
