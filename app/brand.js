@@ -1,4 +1,4 @@
-// くるっくーのロゴ（11/5 決定：判子のシンボルA-2＋線で組んだ「くるっくー」B-1）。
+// くるっくーのロゴ（11/5 候補・未決定：判子のシンボルA-2＋線で組んだ「くるっくー」B-1。仮に入れてある）。
 // 色は currentColor。家族の画面・ログイン画面のヘッダーで使う。本人の画面には出さない（spec 1章「装飾が予定への注意を奪わない」）。
 // 形の設計と他の案：docs/brand.md
 export const LOGO = `<svg viewBox="0 0 476 160" aria-hidden="true" focusable="false" class="logo">
