@@ -175,6 +175,12 @@ function mount() {
   else $app.innerHTML = viewFamily(v);
   if (v === "rescue" || v === "rescue-edit") openRescue(v);
   if (v === "notes") openNotes();
+  if (v === "settings") sound.checkFiles().then((kinds) => {
+    for (const k of kinds) {
+      const o = document.querySelector(`#chime-kind option[value="${k.value}"]`);
+      if (o) { o.disabled = !k.available; o.textContent = k.label + (k.available ? "" : "（音の準備中）"); }
+    }
+  });
   if (v === "gazette") openGazette();
   fill();
   tick();
@@ -1206,7 +1212,7 @@ function settingsHTML() {
   <section class="card"><h2>お知らせの音</h2>
     <p class="hint">表示端末でお知らせが始まるときに鳴る音です。振り子時計は、時刻と取り違えないよう1回だけ鳴ります。</p>
     <div class="row">
-      <label class="field"><span>音</span><select id="chime-kind">${sound.CHIME_KINDS.map((k) => `<option value="${k.value}">${k.label}</option>`).join("")}</select></label>
+      <label class="field"><span>音</span><select id="chime-kind">${sound.CHIME_KINDS.map((k) => `<option value="${k.value}" ${k.file ? "disabled" : ""}>${k.label}${k.file ? "（音の準備中）" : ""}</option>`).join("")}</select></label>
       <button class="btn" type="button" data-act="chime-try">試しに鳴らす</button>
       <button class="btn primary" type="button" data-act="chime-save">保存</button>
     </div>

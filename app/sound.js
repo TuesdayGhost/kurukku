@@ -8,10 +8,11 @@ let ready = false;
 let jaVoice = null;
 let queue = Promise.resolve();
 
-// ---------- お知らせの音（11/4 決定：3種類から家族が選ぶ。ブラウザで合成） ----------
-// chime        : 通知音（ピン・ポーンの2音のベル）
-// pigeon_clock : 鳩時計（笛のような「ポッ・ポー」）
-// pendulum     : 振り子時計（低い「ボーン」。回数で時刻と取り違えないよう、いつも1回だけ）
+// ---------- お知らせの音（11/4 決定：3種類から家族が選ぶ） ----------
+// chime        : 通知音（ピン・ポーンの2音のベル）。ブラウザで合成
+// pigeon_clock : 鳩時計。音のファイル app/sounds/pigeon_clock.mp3（用意するまでは選べない）
+// pendulum     : 振り子時計。音のファイル app/sounds/pendulum.mp3。時刻と取り違えないよう、いつも1回だけ
+// 合成した鳩時計・振り子時計は「幽霊」「お寺の鐘」のようだったため不採用（11/4 実機で確認）。
 const TAU = 2 * Math.PI;
 const KINDS = {
   chime: {
@@ -27,55 +28,50 @@ const KINDS = {
       }
     },
   },
-  pigeon_clock: {
-    label: "鳩時計", len: 1.5,
-    render(out) {
-      let seed = 1;
-      const noise = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 * 2 - 1; };
-      for (const [f, at, dur] of [[784, 0, 0.2], [622.25, 0.32, 0.55]]) {
-        const start = Math.floor(at * RATE), end = Math.min(out.length, start + Math.floor(dur * RATE));
-        let breath = 0;
-        for (let i = start; i < end; i++) {
-          const t = (i - start) / RATE;
-          const env = Math.min(1, t / 0.03) * Math.min(1, (dur - t) / 0.08);
-          const vib = 1 + 0.004 * Math.sin(TAU * 5.5 * t);
-          breath = breath * 0.9 + noise() * 0.1;     // 笛の息の音（こもらせたノイズ）
-          out[i] += 0.3 * env * (Math.sin(TAU * f * vib * t) + 0.18 * Math.sin(2 * TAU * f * t)) + 0.05 * env * breath;
-        }
-      }
-    },
-  },
-  pendulum: {
-    label: "振り子時計", len: 5, once: true,
-    render(out) {
-      // 少しずれた高さの音を重ねて、鐘のうなりを出す
-      const partials = [[196, 1.0, 0.8], [197.4, 0.6, 0.8], [392, 0.35, 1.4], [541, 0.25, 2.0], [588, 0.12, 2.4], [1058, 0.06, 3.5]];
-      for (let i = 0; i < out.length; i++) {
-        const t = i / RATE;
-        const attack = Math.min(1, t / 0.005);
-        let v = 0;
-        for (const [f, a, d] of partials) v += a * Math.exp(-t * d) * Math.sin(TAU * f * t);
-        out[i] = 0.22 * attack * v;
-      }
-    },
-  },
+  pigeon_clock: { label: "鳩時計", file: "sounds/pigeon_clock.mp3" },
+  pendulum: { label: "振り子時計", file: "sounds/pendulum.mp3", once: true },
 };
 const sampleCache = {};
+const fileBuffers = {};
+const fileAvailable = {};
 let chimeKind = "chime";
 
 function synth(kind) {
-  if (!sampleCache[kind]) {
-    const k = KINDS[kind] || KINDS.chime;
+  const k = KINDS[kind]?.render ? KINDS[kind] : KINDS.chime;
+  const key = KINDS[kind]?.render ? kind : "chime";
+  if (!sampleCache[key]) {
     const out = new Float32Array(Math.floor(RATE * k.len));
     k.render(out);
-    sampleCache[kind] = out;
+    sampleCache[key] = out;
   }
-  return sampleCache[kind];
+  return sampleCache[key];
+}
+
+/** 音のファイルがあるか確かめる（設定画面で、準備中の音を選べないようにするため） */
+export async function checkFiles() {
+  await Promise.all(Object.entries(KINDS).filter(([, k]) => k.file).map(async ([kind, k]) => {
+    if (kind in fileAvailable) return;
+    try { const r = await fetch(k.file, { method: "HEAD", cache: "no-store" }); fileAvailable[kind] = r.ok; }
+    catch (_) { fileAvailable[kind] = false; }
+  }));
+  return CHIME_KINDS.map((c) => ({ ...c, available: !c.file || !!fileAvailable[c.value] }));
+}
+
+async function loadFile(kind) {
+  if (fileBuffers[kind] !== undefined) return fileBuffers[kind];
+  try {
+    const r = await fetch(KINDS[kind].file);
+    if (!r.ok) throw new Error("not found");
+    fileBuffers[kind] = await ctx.decodeAudioData(await r.arrayBuffer());
+  } catch (_) {
+    fileBuffers[kind] = null;   // ファイルがなければ通知音で代わりに鳴らす
+  }
+  return fileBuffers[kind];
 }
 
 /** 家の設定のお知らせの音を使う */
 export function setChimeKind(kind) { if (KINDS[kind]) chimeKind = kind; }
-export const CHIME_KINDS = Object.entries(KINDS).map(([value, k]) => ({ value, label: k.label }));
+export const CHIME_KINDS = Object.entries(KINDS).map(([value, k]) => ({ value, label: k.label, file: k.file || null }));
 
 function pickVoice() {
   if (!("speechSynthesis" in window)) return;
@@ -123,10 +119,13 @@ export async function unlock() {
 async function chimeOnce(kind = chimeKind) {
   if (!ctx) return;
   if (ctx.state !== "running") await ctx.resume();
-  const samples = synth(kind);
-  const len = samples.length / RATE;
-  const b = ctx.createBuffer(1, samples.length, RATE);
-  b.copyToChannel(samples, 0);
+  let b = KINDS[kind]?.file ? await loadFile(kind) : null;
+  if (!b) {
+    const samples = synth(kind);
+    b = ctx.createBuffer(1, samples.length, RATE);
+    b.copyToChannel(samples, 0);
+  }
+  const len = b.duration;
   const src = ctx.createBufferSource();
   src.buffer = b;
   const g = ctx.createGain();
