@@ -105,3 +105,20 @@ test("夜の時間帯：21時〜翌6時（0時をまたぐ）", () => {
   assert.equal(S.isNight("23:00:00", "00:00", "05:00"), false);
   assert.equal(S.isNight("03:00:00", "06:00", "06:00"), false);  // 開始=終了なら夜なし
 });
+
+test("本人のふだんの画面：ごはん・お薬はお知らせ中だけ、終わった予定は消す（11/4）", () => {
+  const dinner = { id: "d", title: "夕ごはん", start_time: "18:30:00", notify_from: "18:20:00", notify_until: "18:35:00", show_on_home: false };
+  const day = { id: "y", title: "デイ", start_time: "09:00:00", end_time: "16:00:00" };
+  const shop = { id: "s", title: "買い物", start_time: "15:00:00" };
+  const memo = { id: "m", title: "メモ" };
+  const occ = [day, shop, dinner, memo];
+  const at = (t) => S.homeItems(occ, S.activeNotices(occ, t), t).map((x) => x.id);
+  assert.deepEqual(at("08:00:00"), ["y", "s", "m"]);         // ごはんは出ない
+  assert.deepEqual(at("15:30:00"), ["y", "m"]);              // 買い物（15:00）は終わったので消える
+  assert.deepEqual(at("16:00:01"), ["m"]);                   // デイも終わった
+  assert.deepEqual(at("18:25:00"), ["d", "m"]);              // お知らせ中は夕ごはんが出る
+  assert.deepEqual(at("18:40:00"), ["m"]);
+  assert.equal(S.defaultShowOnHome("お昼ごはん"), false);
+  assert.equal(S.defaultShowOnHome("お薬"), false);
+  assert.equal(S.defaultShowOnHome("デイ"), true);
+});

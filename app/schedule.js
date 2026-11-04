@@ -161,3 +161,25 @@ export function isNight(time, start = "21:00", end = "06:00") {
   if (a === b) return false;
   return a < b ? a <= t && t < b : t >= a || t < b;
 }
+
+/** ごはん・お薬は、最初から「お知らせのときだけ」にする（11/4 決定） */
+export function defaultShowOnHome(title) {
+  return !/(ごはん|食事|薬)/.test(title || "");
+}
+
+/**
+ * 本人のふだんの画面に出す予定（11/4 決定）
+ * - 「お知らせのときだけ」の予定は、お知らせ中だけ出す
+ * - 終わった予定は消す（終わる時刻、なければ予定の時刻を過ぎたら）。お知らせ中なら残す
+ * - 時刻のない予定は一日中出す
+ */
+export function homeItems(occurrences, active, time) {
+  const now = normTime(time);
+  const activeIds = new Set(active.map((s) => s.id));
+  return occurrences.filter((s) => {
+    if (activeIds.has(s.id)) return true;
+    if (s.show_on_home === false) return false;
+    const endish = normTime(s.end_time || s.start_time);
+    return !endish || endish >= now;
+  });
+}

@@ -356,16 +356,15 @@ function updateDisplay(np, occ, active) {
   setHTML($("weather"), weatherHTML(np));
   $("clock").textContent = np.time.slice(0, 5);
 
-  const now = np.time;
+  // ふだんの画面：ごはん・お薬はお知らせ中だけ、終わった予定は消す（11/4 決定）
+  const shown = S.homeItems(occ, active, np.time);
   const groups = patientFirst().map((p) => {
-    const items = occ.filter((s) => s.person_id === p.id);
+    const items = shown.filter((s) => s.person_id === p.id);
     const li = items.map((s) => {
-      const endish = S.normTime(s.end_time || s.start_time);
-      const past = endish && endish < now && !active.includes(s);
       const what = p.is_patient ? (s.display_text || s.title) : s.title;
-      return `<li class="${past ? "past" : ""}"><span class="t">${esc(S.timeLabel(s))}</span><span class="what">${esc(what)}</span></li>`;
+      return `<li><span class="t">${esc(S.timeLabel(s))}</span><span class="what">${esc(what)}</span></li>`;
     }).join("");
-    return `<div class="who ${p.is_patient ? "patient" : ""}"><h2>${esc(p.name)}</h2>${li ? `<ul>${li}</ul>` : `<p class="none">今日の予定はありません</p>`}</div>`;
+    return `<div class="who ${p.is_patient ? "patient" : ""}"><h2>${esc(p.name)}</h2>${li ? `<ul>${li}</ul>` : `<p class="none">このあとの予定はありません</p>`}</div>`;
   }).join("");
   setHTML($("plan"), groups || `<div class="who"><p class="none">まだ人が登録されていません</p></div>`);
 
@@ -516,6 +515,7 @@ function scheduleLine(s, extra = "") {
   if (s.kind === "weekly" && s.valid_from && s.valid_from > state.today) badges.push(`${S.repeatLabel({ kind: "once", on_date: s.valid_from })}から`);
   if (s.kind === "weekly" && s.valid_until) badges.push(`${S.repeatLabel({ kind: "once", on_date: s.valid_until })}まで`);
   if (s.kind === "once" && s.replaces_schedule_id) badges.push("この日だけ変更");
+  if (s.show_on_home === false) badges.push("本人の画面はお知らせのときだけ");
   if (s.notify_from) badges.push(`お知らせ ${S.hm(s.notify_from)}〜${S.hm(s.notify_until)}${s.notify_sound ? "" : "（音なし）"}`);
   return `<div class="main"><strong class="num">${esc(S.timeLabel(s) || "時刻なし")}</strong>　${esc(s.title)}
     <span class="badge">${esc(p ? p.name : "?")}</span>${badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}
@@ -1018,6 +1018,7 @@ function editFormHTML() {
     <label class="field"><span>本人向けの表示文（空なら用件をそのまま表示）</span><input type="text" id="ed-display" maxlength="60" value="${esc(s.display_text || "")}"></label>
     <label class="field"><span>家族メモ（本人の画面には出ません）</span><textarea id="ed-memo" maxlength="400">${esc(s.family_memo || "")}</textarea></label>
     <label class="check"><input type="checkbox" id="ed-gazette" ${s.memo_for_gazette ? "checked" : ""}> このメモを鳩月報に使ってよい</label>
+    <label class="check"><input type="checkbox" id="ed-home" ${s.show_on_home === false ? "" : "checked"}> 本人のふだんの画面にも出す（外すと、お知らせのときだけ出ます）</label>
     <div class="row">
       <button class="btn primary" type="submit" id="ed-submit">変更を保存</button>
       <a class="btn" href="#${esc(edit.back)}">やめる</a>
@@ -1048,6 +1049,7 @@ function readScheduleFields(prefix) {
     display_text: v("display").value.trim() || null,
     family_memo: v("memo").value.trim() || null,
     memo_for_gazette: v("gazette").checked,
+    show_on_home: v("home").checked,
     notify_from: null, notify_until: null, notify_sound: true,
   };
   if (v("notify").checked) {
@@ -1124,6 +1126,7 @@ function addFormHTML(full) {
         <label class="field"><span>本人向けの表示文（空なら用件をそのまま表示）</span><input type="text" id="add-display" maxlength="60" placeholder="例：今日はデイで紅葉を見に行きます。お迎え9時"></label>
         <label class="field"><span>家族メモ（本人の画面には出ません）</span><textarea id="add-memo" maxlength="400"></textarea></label>
         <label class="check"><input type="checkbox" id="add-gazette"> このメモを鳩月報に使ってよい</label>
+        <label class="check"><input type="checkbox" id="add-home" checked> 本人のふだんの画面にも出す（外すと、お知らせのときだけ出ます。ごはん・お薬は最初から外れています）</label>
       </div>
     </details>` : ""}
     <button class="btn primary" type="submit" id="add-submit">追加する</button>
@@ -1290,7 +1293,7 @@ $app.addEventListener("click", async (e) => {
   if (act === "logout-ask") { if (!needsConfirm(btn, "もう一度押すとログアウト")) { stopRealtime(); await sb.auth.signOut(); location.hash = ""; } }
   if (act === "logout") { stopRealtime(); await sb.auth.signOut(); location.hash = ""; }
   if (act === "pick-person") { draft.person = id; renderChips(); }
-  if (act === "preset") { $("add-title").value = btn.dataset.v; }
+  if (act === "preset") { $("add-title").value = btn.dataset.v; syncHomeDefault(); }
   if (act === "pick-when") { draft.when = btn.dataset.v; renderChips(); }
   if (act === "pick-wd") { const d = Number(btn.dataset.v); draft.weekdays.has(d) ? draft.weekdays.delete(d) : draft.weekdays.add(d); renderChips(); }
   if (act === "pick-wd-all") { draft.weekdays = new Set([0, 1, 2, 3, 4, 5, 6]); renderChips(); }
@@ -1381,6 +1384,12 @@ document.addEventListener("click", (e) => {
   if (e.target.classList?.contains("sheet-backdrop")) e.target.remove();
 });
 
+// ごはん・お薬を選んだら「お知らせのときだけ」に（家族が自分で切り替えたら、それを優先）
+function syncHomeDefault() {
+  const h = $("add-home");
+  if (h && !h.dataset.touched) h.checked = S.defaultShowOnHome($("add-title").value);
+}
+
 function syncNotifyDefaults(prefix = "add-") {
   const n = $(prefix + "notify");
   if (!n) return;
@@ -1391,7 +1400,10 @@ function syncNotifyDefaults(prefix = "add-") {
     if (!$(prefix + "nuntil").value) $(prefix + "nuntil").value = S.shiftTime(start, 5);
   }
 }
-$app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "night-end", "chime-kind"].includes(e.target.id)) e.target.dataset.touched = "1"; });
+$app.addEventListener("input", (e) => {
+  if (["pigeon-name", "night-start", "night-end", "chime-kind", "add-home"].includes(e.target.id)) e.target.dataset.touched = "1";
+  if (e.target.id === "add-title") syncHomeDefault();
+});
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
@@ -1500,7 +1512,8 @@ async function submitSchedule() {
   const end = $("add-end").value || null;
   if (!draft.person) throw new Error("誰の予定かを選んでください");
   if (!title) throw new Error("用件を入れてください");
-  const row = { person_id: draft.person, title, start_time: start, end_time: end };
+  const row = { person_id: draft.person, title, start_time: start, end_time: end,
+    show_on_home: $("add-home") ? $("add-home").checked : S.defaultShowOnHome(title) };
   if (draft.when === "weekly") {
     if (!draft.weekdays.size) throw new Error("くりかえす曜日を選んでください");
     Object.assign(row, { kind: "weekly", weekdays: [...draft.weekdays].sort(), valid_from: state.today });
@@ -1525,6 +1538,7 @@ async function submitSchedule() {
   toast(`追加しました：${title}`);
   const keep = draft.person;
   $("add-form").reset();
+  if ($("add-home")) delete $("add-home").dataset.touched;
   draft = freshDraft(keep);
   renderChips();
   syncNotifyDefaults();
