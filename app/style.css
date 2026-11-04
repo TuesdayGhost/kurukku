@@ -73,7 +73,7 @@ button { cursor: pointer; }
 
 /* 通知画面 */
 .notice {
-  position: fixed; inset: 0; background: var(--notice); display: grid;
+  position: fixed; inset: 0; z-index: 6; background: var(--notice); display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto; gap: 2vmin;
   padding: max(3vmin, env(safe-area-inset-top, 0px)) max(4vmin, env(safe-area-inset-right, 0px)) max(3vmin, env(safe-area-inset-bottom, 0px)) max(4vmin, env(safe-area-inset-left, 0px));
   border-top: 2vmin solid var(--notice-line);
@@ -234,3 +234,21 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 .gz-edit { width: 100%; font: inherit; border: 1.5px dashed var(--gz-red); background: #fff; color: var(--gz-ink); padding: 4px 6px; }
 .gz-edit-head { font-size: 1.6rem; font-weight: 700; }
 textarea.gz-edit { min-height: 90px; }
+
+/* おしゃべり鳩：表示画面の右下。夜の画面の上にも出す（お知らせ中は通知画面の下に隠れる） */
+.pigeon-corner {
+  position: fixed; z-index: 5; display: flex; align-items: center; gap: 1vmin;
+  right: max(2vmin, env(safe-area-inset-right, 0px)); bottom: max(2vmin, env(safe-area-inset-bottom, 0px));
+}
+.pigeon-btn {
+  width: clamp(56px, 11vmin, 120px); height: clamp(56px, 11vmin, 120px); border-radius: 50%;
+  border: 2px solid var(--line); background: var(--surface); font-size: clamp(30px, 6vmin, 66px); line-height: 1;
+  display: grid; place-items: center; padding: 0; touch-action: manipulation;
+}
+.pigeon-btn:active { transform: scale(0.94); }
+body.is-night .pigeon-btn { background: var(--night-bg); border-color: var(--night-muted); opacity: 0.7; }
+.coo-bubble {
+  margin: 0; background: var(--surface); border: 2px solid var(--line); border-radius: 18px;
+  padding: 0.4em 0.9em; font-size: clamp(18px, 4vmin, 44px); font-weight: 700; white-space: nowrap;
+}
+body.is-night .coo-bubble { background: var(--night-bg); color: var(--night-fg); border-color: var(--night-muted); }

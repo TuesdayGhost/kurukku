@@ -317,6 +317,10 @@ function viewDisplay() {
       <div id="msgs" class="msgs"></div>
       <div class="status-line" id="status"></div>
     </section>
+    <section class="pigeon-corner" aria-label="${esc(pigeonName() || "鳩")}">
+      <p class="coo-bubble" id="coo-bubble" aria-live="polite" hidden></p>
+      <button type="button" class="pigeon-btn" data-act="pigeon" aria-label="${esc(pigeonName() || "鳩")}にさわる"><span aria-hidden="true">🕊️</span></button>
+    </section>
   </div>
   <div id="night"></div>
   <div id="notice"></div>
@@ -331,6 +335,7 @@ function updateDisplay(np, occ, active) {
   const morning = !night && S.normTime(nightEnd) <= np.time && np.time < "11:00:00";
   $("greet").textContent = morning ? "おはようございます" : "";
   document.body.classList.toggle("is-night", night);
+  state.isNight = night;
   // 夜：暗い画面で日付・時計・ひとことだけを出し続ける（画面は消さない）
   setHTML($("night"), night ? `<div class="night-screen" aria-label="夜の表示">
       <p class="n-date">${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</p>
@@ -371,6 +376,7 @@ function updateDisplay(np, occ, active) {
   if (role() === "family") parts.push(`<a class="btn small" href="#today">家族の画面へ</a>`);
   setHTML($("status"), parts.join(""));
 
+  state.noticeActive = active.length > 0;
   if (active.length) {
     const items = active.map((s) => {
       const p = person(s.person_id);
@@ -383,6 +389,29 @@ function updateDisplay(np, occ, active) {
   } else {
     setHTML($("notice"), "");
   }
+}
+
+// ---------- おしゃべり鳩（ちょっと役に立たない鳩） ----------
+// 触ると意味のない優しい鳴き声を返す。ツッコミはしない（父の端末で注意と受け取られないため）。
+// お知らせ中は黙る。返事のあとは少し黙る。タップは毎回、月報の材料として数える。
+const COO_QUIET_MS = 4000;
+let lastCoo = 0;
+let bubbleTimer = null;
+async function onPigeon() {
+  if (state.member) sb.from("activity_log").insert({ household_id: state.member.household_id, kind: "pigeon_tapped" }).then(() => {});
+  if (state.noticeActive) return;                         // お知らせ中はおしゃべりしない
+  if (Date.now() - lastCoo < COO_QUIET_MS) return;        // 返事のあとは少し黙る
+  if (!sound.isReady()) await sound.unlock();
+  lastCoo = Date.now();
+  // 夜は音を出さず、吹き出しだけ（家族を起こさないための仮置き）
+  const c = state.isNight ? sound.COOS[Math.floor(Math.random() * sound.COOS.length)] : sound.coo();
+  if (!c) return;
+  const b = $("coo-bubble");
+  if (!b) return;
+  b.textContent = c.text;
+  b.hidden = false;
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => { b.hidden = true; }, 2500);
 }
 
 // 時計を長押しすると端末メニュー（設定は変えられない。音の有効化とログアウトだけ）
@@ -1229,6 +1258,7 @@ $app.addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-act]");
   if (!btn) return;
   const act = btn.dataset.act, id = btn.dataset.id;
+  if (act === "pigeon") { onPigeon(); return; }
   if (act === "unlock") { const ok = await sound.unlock(); toast(ok ? "音を出せるようになりました" : "音を有効にできませんでした", !ok); tick(); }
   if (act === "unlock-test") { await sound.unlock(); sound.announce({ times: 1, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}音のテストです。` }); }
   if (act === "sheet-close") $("sheet").innerHTML = "";

@@ -97,8 +97,13 @@ function speakNow(text) {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+let announcing = 0;
+/** お知らせの音を鳴らしている最中か（おしゃべり鳩は黙る） */
+export function isBusy() { return announcing > 0; }
+
 /** チャイムを times 回鳴らしてから読み上げる。順番待ちで実行する */
 export function announce({ times = 2, text = "" } = {}) {
+  announcing++;
   queue = queue.then(async () => {
     try {
       for (let i = 0; i < times; i++) {
@@ -107,6 +112,54 @@ export function announce({ times = 2, text = "" } = {}) {
       }
       if (text) { await wait(400); await speakNow(text); }
     } catch (_) { /* 音が出せなくても表示は続ける */ }
+    finally { announcing--; }
   });
   return queue;
+}
+
+// ---------- おしゃべり鳩：意味のない優しい鳴き声（11/3 決定） ----------
+// 音源は未決のため、録音なしで合成した鳩の声で仮置き。あとで録音ファイルに差し替えられる。
+// 各音は [開始秒, 長さ, 始めの高さHz, 終わりの高さHz, 大きさ, ふるえ(Hz)]
+export const COOS = [
+  { text: "ぽぽ……",      notes: [[0, 0.22, 390, 360, 0.5, 0], [0.32, 0.34, 370, 330, 0.45, 0]] },
+  { text: "くるっくー！", notes: [[0, 0.28, 400, 440, 0.45, 28], [0.36, 0.12, 470, 470, 0.4, 0], [0.56, 0.62, 500, 360, 0.55, 0]] },
+  { text: "んー？ ぽ？",  notes: [[0, 0.5, 320, 430, 0.45, 6], [0.66, 0.16, 460, 480, 0.45, 0]] },
+  { text: "くるる……",    notes: [[0, 0.7, 380, 340, 0.4, 24]] },
+];
+
+function cooNote(t0, [start, dur, f1, f2, vol, trem]) {
+  const t = t0 + start;
+  const o = ctx.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(f1, t);
+  o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.04);
+  g.gain.setValueAtTime(vol * 0.6, t + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  // 喉を鳴らすような小さなふるえ
+  let lfo = null;
+  if (trem) {
+    lfo = ctx.createOscillator();
+    lfo.frequency.value = trem;
+    const lg = ctx.createGain();
+    lg.gain.value = vol * 0.25;
+    lfo.connect(lg).connect(g.gain);
+    lfo.start(t); lfo.stop(t + dur);
+  }
+  // こもった柔らかい音にする
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass"; lp.frequency.value = 900;
+  o.connect(g).connect(lp).connect(ctx.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+/** 鳴き声を1つ鳴らす。鳴らせたら、その鳴き声（text）を返す。お知らせ中・準備前は null */
+export function coo(index = Math.floor(Math.random() * COOS.length)) {
+  if (!isReady() || isBusy()) return null;
+  const c = COOS[index % COOS.length];
+  const t0 = ctx.currentTime + 0.02;
+  for (const n of c.notes) cooNote(t0, n);
+  return c;
 }
