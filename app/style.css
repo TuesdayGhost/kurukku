@@ -5,7 +5,7 @@
   --bg: #e9edf1;          /* 鳩の羽の淡い灰青 */
   --surface: #ffffff;
   --fg: #14181c;
-  --muted: #4f5a64;
+  --muted: #434c55;      /* 本人の画面の小さい文字でも 7:1（SC 1.4.6 を本人の画面に採用） */
   --line: #c9d1d8;
   --accent: #2f5d50;      /* 鳩の首の緑 */
   --accent-2: #5a4670;    /* 鳩の首の紫 */
@@ -90,7 +90,7 @@ button { cursor: pointer; }
 .notice .pigeon { font-size: clamp(18px, 3.4vmin, 40px); color: var(--muted); display: flex; gap: 1em; flex-wrap: wrap; align-items: center; }
 
 /* 夜の表示：まぶしくない暗い地に、落ち着いた明るさの文字 */
-:root { --night-bg: #0b0e12; --night-fg: #c8c2b2; --night-muted: #7f8790; }
+:root { --night-bg: #0b0e12; --night-fg: #c8c2b2; --night-muted: #9aa1a9; }
 body.is-night { background: var(--night-bg); }
 .night-screen {
   position: fixed; inset: 0; background: var(--night-bg); color: var(--night-fg);
@@ -267,3 +267,13 @@ body.is-night .coo-bubble { background: var(--night-bg); color: var(--night-fg);
 /* 表示画面は画面の高さに収める（予定が多いときは予定の欄の中で切れ、下の知らせ・状態の行は必ず見える） */
 body[data-view="display"] #app { height: 100%; }
 .display > .when, .display > .plan { min-height: 0; }
+
+/* 11/4 名前と予定の間を詰める（「このあとの予定はありません」に既定の余白が残っていた） */
+.who { gap: 0.2vmin; }
+.who h2 { line-height: 1.25; }
+.who .none { margin: 0; }
+/* 予定の欄からあふれたときの印（予定を黙って切らない） */
+.plan-more { grid-area: plan; align-self: end; justify-self: stretch; margin: 0; text-align: center; font-weight: 700;
+  font-size: clamp(16px, 3vmin, 32px); background: var(--bg); color: var(--fg); padding: 0.3em 0; z-index: 1; }
+/* 通知画面の「音を止める」 */
+.notice .stop-sound { font-size: clamp(18px, 3.4vmin, 40px); min-height: clamp(48px, 8vmin, 96px); padding: 0 1em; }

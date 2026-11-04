@@ -89,6 +89,7 @@ async function boot() {
     if (document.visibilityState === "visible") { refresh(); if (state.view === "display") keepAwake(); }
   });
   for (const ev of ["pointerdown", "keydown", "input"]) addEventListener(ev, () => { lastInteraction = Date.now(); }, { passive: true });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && state.view === "display" && sound.isBusy()) sound.stopAll(); });
   addEventListener("pointerdown", onAnyTap, { passive: true });
 }
 
@@ -215,10 +216,40 @@ function tick() {
   const active = S.activeNotices(occ, np.time);
   if (role() === "display" || role() === "living" || state.view === "display") handleNotices(active, np);
   if (state.view === "display") updateDisplay(np, occ, active);
-  if (role() === "living" && state.view === "add" && Date.now() - lastInteraction > LIVING_IDLE_MS) {
-    location.hash = "#display";  // 入力途中の内容は保存せずに戻る（仮置き）
+  if (role() === "living" && state.view === "add") {
+    const idle = Date.now() - lastInteraction;
+    if (idle > LIVING_IDLE_MS) {
+      hideIdleWarning();
+      location.hash = "#display";  // 入力途中の内容は保存せずに戻る（仮置き）
+    } else if (idle > LIVING_IDLE_MS - IDLE_WARN_MS) {
+      showIdleWarning(Math.ceil((LIVING_IDLE_MS - idle) / 1000));
+    } else {
+      hideIdleWarning();
+    }
+  } else {
+    hideIdleWarning();
   }
 }
+
+// 居間の自動復帰の予告（WCAG 2.2 SC 2.2.1：20秒以上前に知らせ、簡単な操作で何度でも延ばせる）
+const IDLE_WARN_MS = 25 * 1000;
+function showIdleWarning(sec) {
+  let w = document.getElementById("idle-warn");
+  if (!w) {
+    w = document.createElement("div");
+    w.id = "idle-warn";
+    w.className = "sheet-backdrop";
+    w.innerHTML = `<div class="sheet" role="alertdialog" aria-labelledby="idle-msg">
+      <h2 id="idle-msg">まもなく表示の画面に戻ります</h2>
+      <p class="hint">あと <strong id="idle-sec" class="num"></strong> 秒。入力の途中の内容は保存されません。</p>
+      <button class="btn primary" type="button" id="idle-continue">続ける</button></div>`;
+    document.body.appendChild(w);
+    w.querySelector("#idle-continue").addEventListener("click", () => { lastInteraction = Date.now(); hideIdleWarning(); });
+    w.querySelector("#idle-continue").focus();
+  }
+  w.querySelector("#idle-sec").textContent = String(sec);
+}
+function hideIdleWarning() { document.getElementById("idle-warn")?.remove(); }
 
 const pigeonName = () => (state.household?.pigeon_name || "").trim();
 function speechText(s) {
@@ -321,6 +352,7 @@ function viewDisplay() {
       <p class="clock num" id="clock"></p>
     </section>
     <section class="plan" id="plan" aria-label="今日の予定"></section>
+    <p class="plan-more" id="plan-more" hidden>▼ ほかにも予定があります</p>
     <section class="news" aria-label="家族からの知らせ">
       <div id="msgs" class="msgs"></div>
       <div class="status-line" id="status"></div>
@@ -369,6 +401,8 @@ function updateDisplay(np, occ, active) {
     return `<div class="who ${p.is_patient ? "patient" : ""}"><h2>${esc(p.name)}</h2>${li ? `<ul>${li}</ul>` : `<p class="none">このあとの予定はありません</p>`}</div>`;
   }).join("");
   setHTML($("plan"), groups || `<div class="who"><p class="none">まだ人が登録されていません</p></div>`);
+  const pl = $("plan");
+  $("plan-more").hidden = !(pl.scrollHeight > pl.clientHeight + 2);
 
   const msgs = S.activeMessages(state.messages).slice(0, 3).map((m) => {
     const p = person(m.person_id);
@@ -394,7 +428,7 @@ function updateDisplay(np, occ, active) {
     setHTML($("notice"), `<div class="notice ${active.length > 1 ? "many" : ""}" role="alert">
       <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${np.time.slice(0, 5)}</span></div>
       <div class="items">${items}</div>
-      <div class="pigeon"><span>${pigeonName() ? `${esc(pigeonName())}からのお知らせ` : "くるっくー　お知らせです"}</span>${sound.isReady() ? "" : `<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}</div></div>`);
+      <div class="pigeon"><span>${pigeonName() ? `${esc(pigeonName())}からのお知らせ` : "くるっくー　お知らせです"}</span>${sound.isBusy() ? `<button class="btn stop-sound" type="button" data-act="stop-sound">音を止める</button>` : ""}${sound.isReady() ? "" : `<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}</div></div>`);
   } else {
     setHTML($("notice"), "");
   }
@@ -1280,6 +1314,7 @@ $app.addEventListener("click", async (e) => {
   if (!btn) return;
   const act = btn.dataset.act, id = btn.dataset.id;
   if (act === "pigeon") { onPigeon(); return; }
+  if (act === "stop-sound") { sound.stopAll(); tick(); return; }
   if (act === "chime-try") { await sound.unlock(); sound.announce({ times: 2, kind: $("chime-kind").value, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}お父さん、6時半から夕ごはんです。` }); return; }
   if (act === "chime-save") guarded(btn, async () => {
     const kind = $("chime-kind").value;
