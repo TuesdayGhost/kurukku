@@ -126,6 +126,7 @@ async function refresh() {
       state.people ||= []; state.schedules ||= []; state.exceptions ||= []; state.messages ||= [];
       if (role() === "family") { state.members = res[5].data || []; state.invites = res[6].data || []; }
       state.lastSync = new Date();
+      sound.setChimeKind(state.household?.chime_kind || "chime");
       updateWeather();
       state.syncError = null;
     } catch (e) {
@@ -191,6 +192,7 @@ function fill() {
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
   const db = $("demo-badge"); if (db) db.hidden = !state.household?.is_demo;
   const pn = $("pigeon-name"); if (pn && !pn.dataset.touched) pn.value = pigeonName();
+  const ck = $("chime-kind"); if (ck && !ck.dataset.touched) ck.value = state.household?.chime_kind || "chime";
   const ns = $("night-start"), ne = $("night-end");
   if (ns && !ns.dataset.touched) ns.value = S.hm(state.household?.night_start || "21:00");
   if (ne && !ne.dataset.touched) ne.value = S.hm(state.household?.night_end || "06:00");
@@ -1201,6 +1203,14 @@ function settingsHTML() {
     </form>
     <p class="hint">お知らせのとき「くるっくー。<span id="pigeon-preview"></span>お父さん、6時半から夕ごはんです。」のように名乗ります。</p>
   </section>
+  <section class="card"><h2>お知らせの音</h2>
+    <p class="hint">表示端末でお知らせが始まるときに鳴る音です。振り子時計は、時刻と取り違えないよう1回だけ鳴ります。</p>
+    <div class="row">
+      <label class="field"><span>音</span><select id="chime-kind">${sound.CHIME_KINDS.map((k) => `<option value="${k.value}">${k.label}</option>`).join("")}</select></label>
+      <button class="btn" type="button" data-act="chime-try">試しに鳴らす</button>
+      <button class="btn primary" type="button" data-act="chime-save">保存</button>
+    </div>
+  </section>
   <section class="card"><h2>夜の表示</h2>
     <p class="hint">この時間は、表示端末が暗い画面になり、日付と時計と「今は夜です」だけを出します（画面は消えません）。</p>
     <form id="night-form" class="row">
@@ -1259,6 +1269,15 @@ $app.addEventListener("click", async (e) => {
   if (!btn) return;
   const act = btn.dataset.act, id = btn.dataset.id;
   if (act === "pigeon") { onPigeon(); return; }
+  if (act === "chime-try") { await sound.unlock(); sound.announce({ times: 2, kind: $("chime-kind").value, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}お父さん、6時半から夕ごはんです。` }); return; }
+  if (act === "chime-save") guarded(btn, async () => {
+    const kind = $("chime-kind").value;
+    const { error } = await sb.from("households").update({ chime_kind: kind }).eq("id", state.member.household_id);
+    if (error) throw error;
+    delete $("chime-kind").dataset.touched;
+    toast(`お知らせの音を「${sound.CHIME_KINDS.find((k) => k.value === kind).label}」にしました`);
+    await refresh();
+  });
   if (act === "unlock") { const ok = await sound.unlock(); toast(ok ? "音を出せるようになりました" : "音を有効にできませんでした", !ok); tick(); }
   if (act === "unlock-test") { await sound.unlock(); sound.announce({ times: 1, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}音のテストです。` }); }
   if (act === "sheet-close") $("sheet").innerHTML = "";
@@ -1366,7 +1385,7 @@ function syncNotifyDefaults(prefix = "add-") {
     if (!$(prefix + "nuntil").value) $(prefix + "nuntil").value = S.shiftTime(start, 5);
   }
 }
-$app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "night-end"].includes(e.target.id)) e.target.dataset.touched = "1"; });
+$app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "night-end", "chime-kind"].includes(e.target.id)) e.target.dataset.touched = "1"; });
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
