@@ -159,7 +159,7 @@ function currentView() {
   if (role() === "display") return "display";
   if (role() === "living") return h === "add" ? "add" : "display";
   if (h === "edit") return edit && state.schedules.some((x) => x.id === edit.id) ? "edit" : "plans";
-  return ["today", "add", "plans", "messages", "settings", "display", "rescue", "rescue-edit"].includes(h) ? h : "today";
+  return ["today", "add", "plans", "messages", "notes", "gazette", "settings", "display", "rescue", "rescue-edit"].includes(h) ? h : "today";
 }
 
 function mount() {
@@ -172,6 +172,8 @@ function mount() {
   else if (v === "display") { $app.innerHTML = viewDisplay(); keepAwake(); }
   else $app.innerHTML = viewFamily(v);
   if (v === "rescue" || v === "rescue-edit") openRescue(v);
+  if (v === "notes") openNotes();
+  if (v === "gazette") openGazette();
   fill();
   tick();
 }
@@ -448,7 +450,7 @@ function viewFamily(v) {
     return `<main class="page"><header class="bar"><h1>予定を追加</h1><a class="btn" href="#display">表示に戻る</a></header>${addFormHTML(false)}
       <p class="hint">しばらく操作しないと、入力途中の内容は保存されずに表示画面へ戻ります。</p></main>`;
   }
-  const tabs = [["today", "今日"], ["add", "予定を追加"], ["plans", "予定一覧"], ["messages", "知らせ"], ["settings", "家と端末"], ["display", "表示画面"]]
+  const tabs = [["today", "今日"], ["add", "予定を追加"], ["plans", "予定一覧"], ["messages", "知らせ"], ["notes", "ひとこと"], ["gazette", "鳩月報"], ["settings", "家と端末"], ["display", "表示画面"]]
     .map(([k, label]) => `<a href="#${k}" ${k === v ? 'aria-current="page"' : ""}>${label}</a>`).join("");
   let body = "";
   if (v === "today") body = `<section class="card"><h2>今日の予定</h2><ul class="list" id="today-list"></ul></section>`;
@@ -456,6 +458,8 @@ function viewFamily(v) {
   if (v === "plans") body = `<section class="card"><h2>予定一覧</h2><p class="hint">毎週の予定と、今日以降の予定です。「変更」から、時刻や内容を変えられます。</p><ul class="list" id="plans-list"></ul></section>`;
   if (v === "edit") body = editFormHTML();
   if (v === "rescue" || v === "rescue-edit") body = `<section class="card" id="rescue-root"><p class="hint">読み込み中…</p></section>`;
+  if (v === "notes") body = notesHTML();
+  if (v === "gazette") body = gazetteHTML();
   if (v === "messages") body = msgFormHTML();
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
@@ -734,6 +738,225 @@ async function submitRescue() {
   if (newPath && oldPath) await sb.storage.from("rescue").remove([oldPath]);
   toast("保存しました");
   location.hash = "#rescue";
+}
+
+// ---------- ひとこと・写真（鳩月報の材料） ----------
+// 任意。片方だけでも、何もない日があってもよい。家族だけが見られる。
+const notesState = { list: [], urls: new Map() };
+
+async function memoryUrl(path) {
+  if (!path) return null;
+  if (notesState.urls.has(path)) return notesState.urls.get(path);
+  const { data, error } = await sb.storage.from("memories").download(path);
+  if (error || !data) return null;
+  const u = URL.createObjectURL(data);
+  notesState.urls.set(path, u);
+  return u;
+}
+
+function notesHTML() {
+  return `<form class="card" id="note-form" novalidate>
+      <h2>ひとこと・写真</h2>
+      <p class="hint">思い出すための短いきっかけを残します。書かない日があっても大丈夫です。「月報に使う」を選んだものだけが鳩月報の材料になります。</p>
+      <label class="field"><span>日付</span><input type="date" id="note-date" value="${esc(state.today)}" max="${esc(state.today)}"></label>
+      <label class="field"><span>ひとこと（200文字まで・なくてもよい）</span><textarea id="note-body" maxlength="200" placeholder="例：デイで紅葉。おやつがおいしかったらしい"></textarea></label>
+      <label class="field"><span>写真（なくてもよい。元の画像のまま保存します）</span><input type="file" id="note-photo" accept="image/*"></label>
+      <label class="check"><input type="checkbox" id="note-gazette" checked> 鳩月報に使ってよい</label>
+      <button class="btn primary" type="submit">残す</button>
+    </form>
+    <section class="card"><h2>これまでのひとこと</h2><ul class="list" id="note-list"><li class="hint">読み込み中…</li></ul></section>`;
+}
+
+async function openNotes() {
+  const { data, error } = await sb.from("daily_notes").select("*").order("on_date", { ascending: false }).order("created_at", { ascending: false }).limit(60);
+  if (error) { setHTML($("note-list"), `<li class="error">${esc(errMsg(error))}</li>`); return; }
+  notesState.list = data || [];
+  await Promise.all(notesState.list.map((n) => memoryUrl(n.photo_path)));
+  if (state.view !== "notes") return;
+  setHTML($("note-list"), notesState.list.map((n) => {
+    const u = notesState.urls.get(n.photo_path);
+    return `<li><div class="main"><strong class="num">${esc(R.ymd(n.on_date))}</strong>${n.use_in_gazette ? "" : '<span class="badge">月報に使わない</span>'}
+      ${n.body ? `<div>${esc(n.body)}</div>` : ""}${u ? `<a href="${u}" target="_blank" rel="noopener"><img class="note-thumb" src="${u}" alt="${esc(n.on_date)}の写真"></a>` : ""}</div>
+      <button class="btn small" data-act="note-toggle" data-id="${n.id}">${n.use_in_gazette ? "月報に使わない" : "月報に使う"}</button>
+      <button class="btn small danger" data-act="note-delete" data-id="${n.id}">削除</button></li>`;
+  }).join("") || `<li class="hint">まだありません。</li>`);
+}
+
+async function submitNote() {
+  const on_date = $("note-date").value || state.today;
+  const body = $("note-body").value.trim() || null;
+  const file = $("note-photo").files[0];
+  if (!body && !file) throw new Error("ひとことか写真のどちらかを入れてください");
+  let photo_path = null;
+  if (file) {
+    if (file.size > 20 * 1024 * 1024) throw new Error("写真が大きすぎます（20MBまで）");
+    photo_path = `${state.member.household_id}/${on_date}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${photoExt(file)}`;
+    const up = await sb.storage.from("memories").upload(photo_path, file, { contentType: file.type || "image/jpeg", upsert: false });
+    if (up.error) throw up.error;
+  }
+  const { error } = await sb.from("daily_notes").insert({
+    on_date, body, photo_path, use_in_gazette: $("note-gazette").checked,
+    photo_taken_on: file && file.lastModified ? localDate(file.lastModified) : null,
+  });
+  if (error) { if (photo_path) await sb.storage.from("memories").remove([photo_path]); throw error; }
+  $("note-form").reset();
+  $("note-date").value = state.today;
+  toast("残しました");
+  await openNotes();
+}
+
+// ---------- 鳩月報 ----------
+// 対象月を選ぶ → 集計（コード）＋選んだメモを Claude に渡して見出しと記事 → 固定の紙面で表示 → 直して保存。
+// 紙面を直しても、元の予定・メモ・履歴は書き換えない。
+const gz = { month: null, paper: null, list: [], photos: [], busy: false, editing: false };
+
+function prevMonth() {
+  const [y, m] = state.today.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+function gazetteHTML() {
+  gz.month = gz.month || prevMonth();
+  return `<section class="card">
+      <h2>鳩月報</h2>
+      <p class="hint">その月にくるっくーが運んだ記録から、${esc(pigeonName() || "鳩")}が一枚の新聞を作ります。数字は記録から数え、見出しと記事はClaudeが書きます。</p>
+      <div class="row">
+        <label class="field"><span>対象月</span><input type="month" id="gz-month" value="${esc(gz.month)}" max="${esc(state.today.slice(0, 7))}"></label>
+        <button class="btn primary" type="button" data-act="gz-make" id="gz-make">この月の鳩月報を作る</button>
+      </div>
+      <p class="hint" id="gz-status"></p>
+    </section>
+    <div id="gz-paper"></div>
+    <section class="card"><h2>これまでの鳩月報</h2><ul class="list" id="gz-list"><li class="hint">読み込み中…</li></ul></section>`;
+}
+
+async function openGazette() {
+  const { data, error } = await sb.from("gazettes").select("*").order("month", { ascending: false });
+  if (error) { setHTML($("gz-list"), `<li class="error">${esc(errMsg(error))}</li>`); return; }
+  gz.list = data || [];
+  if (state.view !== "gazette") return;
+  setHTML($("gz-list"), gz.list.map((g) => `<li><div class="main"><strong>${esc(g.month.slice(0, 7).replace("-", "年"))}月号</strong>　${esc(g.headline || "")}
+      <div class="sub">${g.issued_on ? `${esc(R.ymd(g.issued_on))}発行` : "下書き"}</div></div>
+      <button class="btn small" data-act="gz-open" data-id="${g.id}">開く</button></li>`).join("") || `<li class="hint">まだありません。</li>`);
+  const current = gz.list.find((g) => g.month.slice(0, 7) === gz.month);
+  if (current) await showPaper(current);
+}
+
+async function monthPhotos(month) {
+  const [y, m] = month.split("-").map(Number);
+  const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const { data } = await sb.from("daily_notes").select("photo_path, on_date, body").eq("use_in_gazette", true)
+    .not("photo_path", "is", null).gte("on_date", `${month}-01`).lte("on_date", end).order("on_date");
+  return data || [];
+}
+
+async function showPaper(g) {
+  gz.paper = g;
+  gz.month = g.month.slice(0, 7);
+  if ($("gz-month")) $("gz-month").value = gz.month;
+  gz.photos = (await monthPhotos(gz.month)).filter((p) => p.photo_path);
+  if (!g.photo_path && gz.photos.length) g.photo_path = gz.photos[gz.photos.length - 1].photo_path;
+  await Promise.all(gz.photos.map((p) => memoryUrl(p.photo_path)));
+  renderPaper();
+}
+
+function statsBox(st) {
+  const rows = [];
+  for (const x of st.schedules || []) {
+    if (!x.planned_times) continue;
+    rows.push([`${x.person}の${x.title}`, `予定 ${x.planned_times}回`]);
+  }
+  const lateOut = (st.schedules || []).filter((x) => !x.is_patient && x.latest_end).sort((a, b) => b.latest_end.localeCompare(a.latest_end))[0];
+  if (lateOut) rows.push([`いちばん遅い戻り（${lateOut.person}・${lateOut.title}）`, lateOut.latest_end]);
+  rows.push([`${pigeonName() || "鳩"}がつつかれた`, `${st.pigeon_tapped ?? 0}回`]);
+  rows.push(["家族からの知らせ", `${st.messages_sent ?? 0}通`]);
+  rows.push(["お知らせを表示", `${st.notices_shown ?? 0}回`]);
+  rows.push(["ひとこと・写真", `${st.notes ?? 0}件`]);
+  return rows.slice(0, 10);
+}
+
+function renderPaper() {
+  const g = gz.paper;
+  if (!g) { setHTML($("gz-paper"), ""); return; }
+  const photoUrl = notesState.urls.get(g.photo_path);
+  const [y, m] = g.month.split("-").map(Number);
+  const ed = gz.editing;
+  const arts = (g.articles || []).map((a, i) => ed
+    ? `<div class="gz-article"><input type="text" class="gz-edit" id="gz-at-${i}" value="${esc(a.title)}" maxlength="30"><textarea class="gz-edit" id="gz-ab-${i}" maxlength="240">${esc(a.body)}</textarea></div>`
+    : `<article class="gz-article"><h3>${esc(a.title)}</h3><p>${esc(a.body)}</p></article>`).join("");
+  const photoPick = ed && gz.photos.length ? `<div class="chips">${gz.photos.map((p) => `<button type="button" class="chip" data-act="gz-photo" data-path="${esc(p.photo_path)}" aria-pressed="${p.photo_path === g.photo_path}">${esc(R.ymd(p.on_date))}</button>`).join("")}<button type="button" class="chip" data-act="gz-photo" data-path="" aria-pressed="${!g.photo_path}">写真なし</button></div>` : "";
+  setHTML($("gz-paper"), `
+    <section class="gazette" aria-label="鳩月報 ${y}年${m}月号">
+      <header class="gz-mast">
+        <span class="gz-title">鳩月報</span>
+        <span class="gz-issue">${y}年${m}月号　${g.issued_on ? `${esc(R.ymd(g.issued_on))}発行` : "下書き"}　発行：${esc(pigeonName() || "鳩")}</span>
+      </header>
+      ${state.household?.is_demo ? `<p class="gz-demo">この紙面はデモ用の架空データから作りました</p>` : ""}
+      ${ed ? `<input type="text" class="gz-edit gz-edit-head" id="gz-h" value="${esc(g.headline)}" maxlength="40">
+              <input type="text" class="gz-edit" id="gz-sh" value="${esc(g.subheadline || "")}" maxlength="60">`
+           : `<h2 class="gz-head">${esc(g.headline)}</h2><p class="gz-sub">${esc(g.subheadline || "")}</p>`}
+      <div class="gz-body">
+        <figure class="gz-photo">${photoUrl ? `<a href="${photoUrl}" target="_blank" rel="noopener"><img src="${photoUrl}" alt="今月の一枚"></a><figcaption>今月の一枚（写真と記事の出来事は同じとは限りません）</figcaption>` : `<div class="gz-nophoto">写真なし</div>`}${photoPick}</figure>
+        <div class="gz-articles">${arts}</div>
+        <aside class="gz-stats"><h3>今月の記録</h3><dl>${statsBox(g.stats || {}).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+          <p class="gz-note">回数は記録から数えたものです。「予定」は予定の回数で、実際に出かけた回数ではありません。</p></aside>
+      </div>
+      <footer class="gz-foot">見出しと記事：${esc(g.model || "Claude")}　${g.generated_at ? `作成 ${esc(R.ymd(String(g.generated_at).slice(0, 10)))}` : ""}</footer>
+    </section>
+    <div class="row">
+      ${ed ? `<button class="btn primary" data-act="gz-save">保存して発行する</button><button class="btn" data-act="gz-cancel">直すのをやめる</button>`
+           : `<button class="btn" data-act="gz-edit">見出し・記事を直す</button>${g.issued_on ? "" : `<button class="btn primary" data-act="gz-save">このまま保存して発行する</button>`}`}
+    </div>`);
+}
+
+async function makeGazette(overwrite = false) {
+  if (gz.busy) return;
+  const month = $("gz-month").value;
+  if (!month) throw new Error("対象月を選んでください");
+  gz.month = month;
+  const existing = gz.list.find((g) => g.month.slice(0, 7) === month);
+  if (existing?.issued_on && !overwrite) {
+    $("gz-status").innerHTML = `この月はもう発行済みです。<button class="btn small danger" data-act="gz-overwrite">作り直す（上書き）</button>`;
+    return;
+  }
+  gz.busy = true;
+  const btn = $("gz-make");
+  btn.disabled = true;
+  $("gz-status").textContent = `${pigeonName() || "鳩"}が記事を書いています…（1分ほどかかることがあります）`;
+  try {
+    const { data, error } = await sb.functions.invoke("gazette", { body: { month, overwrite } });
+    if (error) {
+      let msg = error.message;
+      try { const j = await error.context.json(); if (j?.error) msg = j.error; } catch (_) { /* そのまま */ }
+      throw new Error(msg);
+    }
+    $("gz-status").textContent = "できました。直したいところがあれば直して、保存してください。";
+    gz.editing = false;
+    await showPaper(data.gazette);
+    await openGazette();
+  } catch (e) {
+    $("gz-status").textContent = `作れませんでした：${errMsg(e)}　入力した内容や記録は消えていません。もう一度試せます。`;
+  } finally {
+    gz.busy = false;
+    btn.disabled = false;
+  }
+}
+
+async function saveGazette() {
+  const g = gz.paper;
+  const patch = { issued_on: state.today, photo_path: g.photo_path || null };
+  if (gz.editing) {
+    patch.headline = $("gz-h").value.trim() || g.headline;
+    patch.subheadline = $("gz-sh").value.trim();
+    patch.articles = (g.articles || []).map((a, i) => ({ title: $(`gz-at-${i}`).value.trim(), body: $(`gz-ab-${i}`).value.trim() })).filter((a) => a.body);
+  }
+  const { data, error } = await sb.from("gazettes").update(patch).eq("id", g.id).select().single();
+  if (error) throw error;
+  gz.editing = false;
+  toast("鳩月報を保存しました");
+  await showPaper({ ...g, ...patch, ...(data || {}) });
+  await openGazette();
 }
 
 // ---------- 予定の変更 ----------
@@ -1048,6 +1271,25 @@ $app.addEventListener("click", async (e) => {
     if (error) throw error; toast("中止を取り消しました"); await refresh();
   });
   if (act === "rescue-retry") openRescue(state.view);
+  if (act === "note-toggle") guarded(btn, async () => {
+    const n = notesState.list.find((x) => x.id === id);
+    const { error } = await sb.from("daily_notes").update({ use_in_gazette: !n.use_in_gazette }).eq("id", id);
+    if (error) throw error; await openNotes();
+  });
+  if (act === "note-delete") { if (needsConfirm(btn, "もう一度押すと削除")) return; guarded(btn, async () => {
+    const n = notesState.list.find((x) => x.id === id);
+    const { error } = await sb.from("daily_notes").delete().eq("id", id);
+    if (error) throw error;
+    if (n?.photo_path) await sb.storage.from("memories").remove([n.photo_path]);
+    toast("削除しました"); await openNotes();
+  }); }
+  if (act === "gz-make") guarded(btn, () => makeGazette(false));
+  if (act === "gz-overwrite") { if (needsConfirm(btn, "もう一度押すと作り直します")) return; guarded(btn, () => makeGazette(true)); }
+  if (act === "gz-open") { const g = gz.list.find((x) => x.id === id); if (g) { gz.editing = false; await showPaper(g); $("gz-paper").scrollIntoView({ behavior: "smooth" }); } }
+  if (act === "gz-edit") { gz.editing = true; renderPaper(); }
+  if (act === "gz-cancel") { gz.editing = false; renderPaper(); }
+  if (act === "gz-photo") { gz.paper.photo_path = btn.dataset.path || null; renderPaper(); }
+  if (act === "gz-save") guarded(btn, saveGazette);
   if (act === "rc-copy") {
     const t = $("rc-text");
     try { await navigator.clipboard.writeText(t.value); toast("文字をコピーしました"); }
@@ -1108,6 +1350,10 @@ $app.addEventListener("input", (e) => { if (["pigeon-name", "night-start", "nigh
 $app.addEventListener("change", (e) => {
   if (e.target.id === "add-notify" || e.target.id === "add-start") syncNotifyDefaults("add-");
   if (e.target.id === "ed-notify" || e.target.id === "ed-start") syncNotifyDefaults("ed-");
+  if (e.target.id === "gz-month") {
+    gz.month = e.target.value; gz.paper = null; gz.editing = false; setHTML($("gz-paper"), ""); $("gz-status").textContent = "";
+    const g = gz.list.find((x) => x.month.slice(0, 7) === gz.month); if (g) showPaper(g);
+  }
   if (e.target.id === "rc-private") { rescue.withAddress = e.target.checked; setHTML($("rc-out"), ""); prepareShare(); }
   if (e.target.id === "rs-face") {
     const f = e.target.files[0];
@@ -1134,6 +1380,7 @@ $app.addEventListener("submit", async (e) => {
   if (form.id === "add-form") return guarded(btn, submitSchedule);
   if (form.id === "edit-form") return guarded(btn, submitEdit);
   if (form.id === "rescue-form") return guarded(btn, submitRescue);
+  if (form.id === "note-form") return guarded(btn, submitNote);
   if (form.id === "cloth-form") return guarded(btn, async () => {
     if (rescue.clothes.length >= 6) throw new Error("よく着る服は6枚までです。先に1枚削除してください");
     const f = $("cloth-photo").files[0];

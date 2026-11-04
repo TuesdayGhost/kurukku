@@ -194,3 +194,40 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 
 /* デモ用の家の印（本番のデータと見分ける） */
 .demo-badge { display: inline-block; border: 1.5px dashed var(--accent-2); color: var(--accent-2); border-radius: 6px; padding: 0 8px; font-weight: 700; font-size: 0.85rem; }
+
+/* ========== ひとこと ========== */
+.note-thumb { display: block; width: 140px; max-width: 100%; margin-top: 6px; border-radius: 6px; }
+
+/* ========== 鳩月報（スポーツ新聞風の固定紙面） ========== */
+.gazette {
+  --gz-ink: #141414; --gz-paper: #fbfaf6; --gz-red: #c8102e; --gz-rule: #141414;
+  background: var(--gz-paper); color: var(--gz-ink); border: 3px solid var(--gz-rule);
+  padding: 14px; display: grid; gap: 10px; min-width: 0;
+  font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+.gz-mast { display: flex; justify-content: space-between; align-items: end; gap: 8px; flex-wrap: wrap; border-bottom: 4px double var(--gz-rule); padding-bottom: 6px; }
+.gz-title { font-size: 2rem; font-weight: 700; letter-spacing: 0.15em; background: var(--gz-red); color: #fff; padding: 0 10px; }
+.gz-issue { font-size: 0.85rem; }
+.gz-demo { margin: 0; font-size: 0.85rem; border: 1.5px dashed var(--gz-red); color: var(--gz-red); padding: 2px 8px; justify-self: start; }
+.gazette .gz-head { margin: 0; font-size: clamp(2rem, 9vw, 3.6rem); font-weight: 700; line-height: 1.1; color: var(--gz-red); text-wrap: balance; overflow-wrap: anywhere; }
+.gz-sub { margin: 0; font-size: 1.2rem; font-weight: 700; background: var(--gz-ink); color: var(--gz-paper); padding: 2px 8px; justify-self: start; overflow-wrap: anywhere; }
+.gz-body { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .gz-body { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); } .gz-articles { grid-row: span 2; } }
+.gz-photo { margin: 0; display: grid; gap: 4px; }
+.gz-photo img { width: 100%; max-height: 340px; object-fit: cover; border: 2px solid var(--gz-rule); }
+.gz-photo figcaption { font-size: 0.75rem; }
+.gz-nophoto { border: 2px dashed #888; padding: 24px; text-align: center; color: #666; }
+.gz-articles { display: grid; gap: 10px; align-content: start; }
+.gazette .gz-article h3 { margin: 0 0 2px; font-size: 1.15rem; border-left: 6px solid var(--gz-red); padding-left: 6px; }
+.gz-article p { margin: 0; line-height: 1.7; }
+.gz-stats { border: 2px solid var(--gz-rule); padding: 8px 10px; align-self: start; }
+.gazette .gz-stats h3 { margin: 0 0 4px; font-size: 1rem; }
+.gz-stats dl { margin: 0; display: grid; gap: 2px; }
+.gz-stats dl > div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted #999; }
+.gz-stats dt { font-size: 0.9rem; min-width: 0; }
+.gz-stats dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gz-note { margin: 6px 0 0; font-size: 0.72rem; }
+.gz-foot { font-size: 0.72rem; border-top: 1px solid var(--gz-rule); padding-top: 4px; }
+.gz-edit { width: 100%; font: inherit; border: 1.5px dashed var(--gz-red); background: #fff; color: var(--gz-ink); padding: 4px 6px; }
+.gz-edit-head { font-size: 1.6rem; font-weight: 700; }
+textarea.gz-edit { min-height: 90px; }
