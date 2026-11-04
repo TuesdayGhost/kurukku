@@ -10,8 +10,9 @@ let queue = Promise.resolve();
 
 // ---------- お知らせの音（11/4 決定：3種類から家族が選ぶ） ----------
 // chime        : 通知音（ピン・ポーンの2音のベル）。ブラウザで合成
-// pigeon_clock : 鳩時計。音のファイル app/sounds/pigeon_clock.mp3（用意するまでは選べない）
-// pendulum     : 振り子時計。音のファイル app/sounds/pendulum.mp3。時刻と取り違えないよう、いつも1回だけ
+// pigeon_clock : 鳩時計。app/sounds/pigeon_clock.wav（「ポッ・ポー」が2回入っているので1回だけ再生）
+// pendulum     : 振り子時計。app/sounds/pendulum.wav。時刻と取り違えないよう、いつも1回だけ
+// 2つのファイルは葵依さんが Python で作成（11/4）。ファイルがなければ選べず、通知音で代わりに鳴らす。
 // 合成した鳩時計・振り子時計は「幽霊」「お寺の鐘」のようだったため不採用（11/4 実機で確認）。
 const TAU = 2 * Math.PI;
 const KINDS = {
@@ -28,8 +29,8 @@ const KINDS = {
       }
     },
   },
-  pigeon_clock: { label: "鳩時計", file: "sounds/pigeon_clock.mp3" },
-  pendulum: { label: "振り子時計", file: "sounds/pendulum.mp3", once: true },
+  pigeon_clock: { label: "鳩時計", file: "sounds/pigeon_clock.wav", once: true },
+  pendulum: { label: "振り子時計", file: "sounds/pendulum.wav", once: true },
 };
 const sampleCache = {};
 const fileBuffers = {};
