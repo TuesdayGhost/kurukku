@@ -10,6 +10,7 @@ import * as sound from "./sound.js";
 import * as W from "./weather.js";
 import * as R from "./rescue.js";
 import * as G from "./gazette.js";
+import { icon } from "./icons.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -162,7 +163,7 @@ function currentView() {
   if (role() === "display") return "display";
   if (role() === "living") return h === "add" ? "add" : "display";
   if (h === "edit") return edit && state.schedules.some((x) => x.id === edit.id) ? "edit" : "plans";
-  return ["today", "add", "plans", "messages", "notes", "gazette", "settings", "display", "rescue", "rescue-edit"].includes(h) ? h : "today";
+  return ["today", "add", "plans", "messages", "notes", "gazette", "settings", "more", "display", "rescue", "rescue-edit"].includes(h) ? h : "today";
 }
 
 function mount() {
@@ -523,8 +524,11 @@ function viewFamily(v) {
     return `<main class="page"><header class="bar"><h1>予定を追加</h1><a class="btn" href="#display">表示に戻る</a></header>${addFormHTML(false)}
       <p class="hint">しばらく操作しないと、入力途中の内容は保存されずに表示画面へ戻ります。</p></main>`;
   }
-  const tabs = [["today", "今日"], ["add", "予定を追加"], ["plans", "予定一覧"], ["messages", "知らせ"], ["notes", "ひとこと"], ["gazette", "鳩月報"], ["settings", "家と端末"], ["display", "表示画面"]]
-    .map(([k, label]) => `<a href="#${k}" ${k === v ? 'aria-current="page"' : ""}>${label}</a>`).join("");
+  // 下にいつも出ているメニュー（11/4 決定：案A）。「その他」の中の画面にいるときは「その他」を光らせる
+  const MORE = ["plans", "notes", "settings", "more"];
+  const navItems = [["today", "今日", "house"], ["add", "予定を追加", "calendar-plus"], ["messages", "知らせ", "mail"], ["gazette", "鳩月報", "newspaper"], ["more", "その他", "ellipsis"]];
+  const current = MORE.includes(v) ? "more" : v;
+  const tabs = navItems.map(([k, label, ic]) => `<a href="#${k}" ${k === current ? 'aria-current="page"' : ""}>${icon(ic, "nav-ic")}<span>${label}</span></a>`).join("");
   let body = "";
   if (v === "today") body = `<section class="card"><h2>今日の予定</h2><ul class="list" id="today-list"></ul></section>`;
   if (v === "add") body = addFormHTML(true);
@@ -532,13 +536,20 @@ function viewFamily(v) {
   if (v === "edit") body = editFormHTML();
   if (v === "rescue" || v === "rescue-edit") body = `<section class="card" id="rescue-root"><p class="hint">読み込み中…</p></section>`;
   if (v === "notes") body = notesHTML();
+  if (v === "more") body = `<nav class="card more-menu" aria-label="その他の画面"><ul class="list">
+      ${[["plans", "予定一覧", "list-checks", "毎週の予定と、これからの予定。変更・削除"], ["notes", "ひとこと・写真", "notebook-pen", "鳩月報の材料になる短いメモと写真"],
+         ["settings", "家と端末", "settings", "人・端末の登録、鳩の名前、お知らせの音、夜の表示、天気の地域"], ["display", "表示画面", "monitor", "父の部屋と同じ画面を見る"]]
+        .map(([k, label, ic, sub]) => `<li><a class="more-link" href="#${k}">${icon(ic, "more-ic")}<span class="main"><strong>${label}</strong><span class="sub">${sub}</span></span></a></li>`).join("")}
+    </ul></nav>`;
   if (v === "gazette") body = gazetteHTML();
   if (v === "messages") body = msgFormHTML();
   if (v === "settings") body = settingsHTML();
   return `<main class="page">
-    <header class="bar"><h1>くるっくー <span class="hint" id="hh-name"></span></h1><span class="demo-badge" id="demo-badge" hidden>デモ用データ（架空）</span></header>
-    <a class="btn rescue-entry" href="#rescue">レスキューカード（本人の情報をすぐ見せる）</a>
-    <nav class="tabs" aria-label="画面">${tabs}</nav>
+    <header class="bar family-bar">
+      <div class="brand"><h1>くるっくー <span class="hint" id="hh-name"></span></h1><span class="demo-badge" id="demo-badge" hidden>デモ用データ（架空）</span></div>
+      <a class="btn rescue-entry" href="#rescue" ${v === "rescue" ? 'aria-current="page"' : ""}>${icon("id-card", "nav-ic")}<span>レスキューカード</span></a>
+    </header>
+    <nav class="bottom-nav" aria-label="画面">${tabs}</nav>
     ${state.syncError ? `<p class="error">接続できません：${esc(state.syncError)}</p>` : ""}
     ${body}
   </main>`;
@@ -959,7 +970,7 @@ function renderPaper() {
         <figure class="gz-photo">${photoUrl ? `<a href="${photoUrl}" target="_blank" rel="noopener"><img src="${photoUrl}" alt="今月の一枚"></a><figcaption>今月の一枚（写真と記事の出来事は同じとは限りません）</figcaption>` : `<div class="gz-nophoto">写真なし</div>`}${photoPick}</figure>
         <div class="gz-articles">${arts}</div>
         <aside class="gz-stats"><h3>今月の記録</h3><ul class="gz-tiles">${G.statTiles(g.stats || {}, pigeonName() || "鳩").map((t) => `<li class="gz-tile">
-            <span class="gz-icon" aria-hidden="true">${t.icon}</span>
+            <span class="gz-icon">${icon(t.icon, "gz-ic")}</span>
             <span class="gz-num num">${esc(t.num)}<small>${esc(t.unit)}</small></span>
             <span class="gz-label">${esc(t.label)}</span>
             ${t.who || t.note ? `<span class="gz-who">${esc([t.who, t.note].filter(Boolean).join("・"))}</span>` : ""}</li>`).join("")}</ul>

@@ -163,7 +163,8 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ========== レスキューカード ========== */
-.rescue-entry { width: 100%; border-color: var(--bad); color: var(--bad); }
+.rescue-entry { border-color: var(--bad); color: var(--bad); gap: 6px; min-height: 44px; padding: 6px 12px; }  /* [R+] 2.5.5 44px（screens.md） */
+.rescue-entry[aria-current="page"] { background: var(--bad); color: var(--surface); }
 .rescue-card { background: var(--surface); border: 2px solid var(--bad); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
 .rescue-card h3 { margin: 0; font-size: 1.1rem; }
 .rc-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -277,3 +278,32 @@ body[data-view="display"] #app { height: 100%; }
   font-size: clamp(16px, 3vmin, 32px); background: var(--bg); color: var(--fg); padding: 0.3em 0; z-index: 1; }
 /* 通知画面の「音を止める」 */
 .notice .stop-sound { font-size: clamp(18px, 3.4vmin, 40px); min-height: clamp(48px, 8vmin, 96px); padding: 0 1em; }
+
+/* ========== 家族の画面：下にいつも出ているメニュー（11/4 案A） ========== */
+.family-bar { align-items: flex-start; }
+.family-bar .brand { display: grid; gap: 4px; min-width: 0; }
+.ic, .nav-ic, .more-ic, .gz-ic { width: 1.4em; height: 1.4em; flex: none; }
+.page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 4px max(4px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
+}
+.bottom-nav a {
+  display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 56px; border-radius: 10px;
+  text-decoration: none; color: var(--muted); font-size: 0.78rem; font-weight: 700; text-align: center; line-height: 1.2;
+}
+.bottom-nav a .nav-ic { width: 26px; height: 26px; }
+.bottom-nav a[aria-current="page"] { color: var(--accent); background: var(--bg); }
+.more-link { display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--fg); min-height: 56px; width: 100%; }
+.more-link .more-ic { width: 28px; height: 28px; color: var(--accent); }
+.more-link .main { display: grid; gap: 2px; }
+.more-menu .list li { border-bottom: 1px solid var(--line); padding: 6px 0; }
+/* 鳩月報のタイルのアイコン */
+.gz-icon .gz-ic { width: 2rem; height: 2rem; color: var(--gz-ink); }
+.family-bar { flex-wrap: nowrap; }
+.family-bar .brand { flex: 1 1 auto; }
+.family-bar .brand h1 { font-size: 1.35rem; line-height: 1.25; }
+.family-bar .brand h1 .hint { display: block; font-size: 0.8rem; }
+.family-bar .rescue-entry { flex: none; }

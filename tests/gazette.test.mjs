@@ -4,13 +4,13 @@ import assert from "node:assert/strict";
 import { iconFor, statTiles } from "../app/gazette.js";
 
 test("用件の名前から絵を選ぶ", () => {
-  assert.equal(iconFor("朝ごはん"), "🍞");
-  assert.equal(iconFor("お昼ごはん"), "🍙");
-  assert.equal(iconFor("夕ごはん"), "🍲");
-  assert.equal(iconFor("お薬"), "💊");
-  assert.equal(iconFor("デイ"), "🚌");
-  assert.equal(iconFor("仕事"), "💼");
-  assert.equal(iconFor("町内会"), "📅");
+  assert.equal(iconFor("朝ごはん"), "coffee");
+  assert.equal(iconFor("お昼ごはん"), "sandwich");
+  assert.equal(iconFor("夕ごはん"), "soup");
+  assert.equal(iconFor("お薬"), "pill");
+  assert.equal(iconFor("デイ"), "bus");
+  assert.equal(iconFor("仕事"), "briefcase");
+  assert.equal(iconFor("町内会"), "calendar-days");
 });
 
 test("タイルは本人の予定が先、予定には「予定」と付く、数字は集計のまま", () => {
