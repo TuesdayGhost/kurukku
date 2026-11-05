@@ -102,84 +102,118 @@ function loadImage(url) {
 }
 
 /**
- * 1枚の画像（縦長 1080×1600）を作り、Blob を返す。
- * faceUrl / clothes[i].url はこの端末の中の一時的なURL（blob:）。
+ * 送るための1枚の画像（幅 1080、高さは内容に合わせる）を作り、Blob を返す。
+ * faceUrl / clothesUrls[i] はこの端末の中の一時的なURL（blob:）。
+ *
+ * 11/5 レビュー：以前は高さ 1920 で固定し、長い文は3行まで・服の写真は4枚までで黙って切っていた。
+ * 必要な情報を欠けずに送るのがこの機能の中心なので、文字は省略も縮小もせず全文を折り返し、
+ * 服の写真は登録した分すべてを並べ、画像の高さをそれに合わせて決める（文字の版と同じ内容になる）。
  */
+export const CARD_IMAGE_WIDTH = 1080;
+
 export async function cardImage({ profile, clothes, todayStr, withAddress, faceUrl, clothesUrls = [], font }) {
-  const W = 1080, H = 1920, M = 56;
-  const c = document.createElement("canvas");
-  c.width = W; c.height = H;
-  const ctx = c.getContext("2d");
+  const W = CARD_IMAGE_WIDTH, M = 56;
   const F = (size, weight = 400) => `${weight} ${size}px ${font}`;
-  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "#14181c"; ctx.textBaseline = "top";
-
-  ctx.font = F(44, 700);
-  ctx.fillText("本人の情報（家族より）", M, M);
-
-  // 顔写真
-  const photoY = M + 80, photoW = 460, photoH = 580;
-  if (faceUrl) {
-    try { drawCover(ctx, await loadImage(faceUrl), M, photoY, photoW, photoH); }
-    catch (_) { ctx.strokeRect(M, photoY, photoW, photoH); }
-  } else {
-    ctx.strokeStyle = "#c9d1d8"; ctx.lineWidth = 3; ctx.strokeRect(M, photoY, photoW, photoH);
-    ctx.font = F(32); ctx.fillStyle = "#4f5a64"; ctx.fillText("写真なし", M + 150, photoY + 270); ctx.fillStyle = "#14181c";
+  // 写真は先に読み込む（読めない写真は枠だけにする・飛ばす）
+  const face = faceUrl ? await loadImage(faceUrl).catch(() => null) : null;
+  const thumbs = [];
+  for (let i = 0; i < (clothes || []).length; i++) {
+    if (!clothesUrls[i]) continue;
+    const img = await loadImage(clothesUrls[i]).catch(() => null);
+    if (img) thumbs.push({ c: clothes[i], img });
   }
-  if (profile?.face_photo_taken_on) {
-    ctx.font = F(26); ctx.fillStyle = "#4f5a64";
-    ctx.fillText(`${ymd(profile.face_photo_taken_on)}ごろ撮影`, M, photoY + photoH + 12);
-    ctx.fillStyle = "#14181c";
-  }
-
-  // 右側：名前と大きな数字
   const rows = cardRows(profile, clothes, todayStr, { withAddress });
   const get = (k) => rows.find((r) => r.key === k)?.value || "";
-  const rx = M + photoW + 44, rw = W - rx - M;
-  let y = photoY;
-  ctx.font = F(56, 700);
-  for (const l of wrapLines(ctx, get("name") || "（名前未登録）", rw)) { ctx.fillText(l, rx, y); y += 70; }
-  if (get("age")) { ctx.font = F(32); for (const l of wrapLines(ctx, get("age"), rw)) { ctx.fillText(l, rx, y); y += 44; } y += 12; }
-  y += 16;
-  for (const k of ["height", "weight", "shoe"]) {
-    const r = rows.find((x) => x.key === k);
-    ctx.font = F(28); ctx.fillStyle = "#4f5a64"; ctx.fillText(r.label, rx, y); y += 38;
-    ctx.fillStyle = "#14181c"; ctx.font = F(48, 700);
-    ctx.fillText(r.main || "未登録", rx, y); y += 58;
-    if (r.note) { ctx.font = F(24); ctx.fillStyle = "#4f5a64"; ctx.fillText(r.note, rx, y); ctx.fillStyle = "#14181c"; y += 32; }
-    y += 14;
-  }
 
-  // 下側：その他の項目
-  y = Math.max(y, photoY + photoH + 60);
-  for (const k of ["features", "belongings", "clothes", "notes", "address"]) {
-    const v = get(k);
-    if (!v || y > H - 120) continue;
-    const label = rows.find((x) => x.key === k).label;
-    ctx.font = F(28); ctx.fillStyle = "#4f5a64"; ctx.fillText(label, M, y); y += 38;
-    ctx.font = F(34); ctx.fillStyle = "#14181c";
-    for (const l of wrapLines(ctx, v, W - M * 2).slice(0, 3)) { ctx.fillText(l, M, y); y += 46; }
-    y += 14;
-  }
+  // 1回目は高さを測るだけ、2回目に描く（文字の折り返しは measureText に依るので、同じ font で2回通す）
+  function layout(ctx, draw) {
+    const text = (s, x, y) => { if (draw) ctx.fillText(s, x, y); };
+    if (draw) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); }
+    ctx.fillStyle = "#14181c"; ctx.textBaseline = "top";
 
-  // よく着る服の写真（このうちどれか）
-  const thumbs = (clothes || []).map((c, i) => ({ c, url: clothesUrls[i] })).filter((x) => x.url).slice(0, 4);
-  if (thumbs.length) {
-    const size = 200, gap = 20, ty = H - M - 60 - size - 40;
-    if (y < ty) {
-      ctx.font = F(28); ctx.fillStyle = "#4f5a64"; ctx.fillText("よく着る服（このうちどれか）", M, ty - 4); ctx.fillStyle = "#14181c";
-      for (let i = 0; i < thumbs.length; i++) {
-        const x = M + i * (size + gap);
-        try { drawCover(ctx, await loadImage(thumbs[i].url), x, ty + 36, size, size); } catch (_) { /* 読めない写真は飛ばす */ }
-        ctx.font = F(22);
-        ctx.fillText(wrapLines(ctx, thumbs[i].c.note || "", size)[0] || "", x, ty + 36 + size + 6);
+    ctx.font = F(44, 700);
+    text("本人の情報（家族より）", M, M);
+
+    // 顔写真
+    const photoY = M + 80, photoW = 460, photoH = 580;
+    if (draw) {
+      if (face) drawCover(ctx, face, M, photoY, photoW, photoH);
+      else {
+        ctx.strokeStyle = "#c9d1d8"; ctx.lineWidth = 3; ctx.strokeRect(M, photoY, photoW, photoH);
+        ctx.font = F(32); ctx.fillStyle = "#4f5a64"; ctx.fillText(faceUrl ? "写真を読めませんでした" : "写真なし", M + 40, photoY + 270); ctx.fillStyle = "#14181c";
       }
     }
+    let photoBottom = photoY + photoH;
+    if (profile?.face_photo_taken_on) {
+      ctx.font = F(26); ctx.fillStyle = "#4f5a64";
+      text(`${ymd(profile.face_photo_taken_on)}ごろ撮影`, M, photoBottom + 12);
+      ctx.fillStyle = "#14181c";
+      photoBottom += 12 + 34;
+    }
+
+    // 右側：名前と大きな数字
+    const rx = M + photoW + 44, rw = W - rx - M;
+    let y = photoY;
+    ctx.font = F(56, 700);
+    for (const l of wrapLines(ctx, get("name") || "（名前未登録）", rw)) { text(l, rx, y); y += 70; }
+    if (get("age")) { ctx.font = F(32); for (const l of wrapLines(ctx, get("age"), rw)) { text(l, rx, y); y += 44; } y += 12; }
+    y += 16;
+    for (const k of ["height", "weight", "shoe"]) {
+      const r = rows.find((x) => x.key === k);
+      ctx.font = F(28); ctx.fillStyle = "#4f5a64"; text(r.label, rx, y); y += 38;
+      ctx.fillStyle = "#14181c"; ctx.font = F(48, 700);
+      text(r.main || "未登録", rx, y); y += 58;
+      if (r.note) { ctx.font = F(24); ctx.fillStyle = "#4f5a64"; text(r.note, rx, y); ctx.fillStyle = "#14181c"; y += 32; }
+      y += 14;
+    }
+
+    // 下側：その他の項目。全文を折り返して出す（切らない）
+    y = Math.max(y, photoBottom + 40);
+    for (const k of ["features", "belongings", "clothes", "notes", "address"]) {
+      const v = get(k);
+      if (!v) continue;
+      const label = rows.find((x) => x.key === k).label;
+      ctx.font = F(28); ctx.fillStyle = "#4f5a64"; text(label, M, y); y += 38;
+      ctx.font = F(34); ctx.fillStyle = "#14181c";
+      for (const l of wrapLines(ctx, v, W - M * 2)) { text(l, M, y); y += 46; }
+      y += 14;
+    }
+
+    // よく着る服の写真（このうちどれか）。登録した分すべてを4枚ずつ並べ、ひとことも全文を折り返す
+    if (thumbs.length) {
+      const size = 200, gap = 20, perRow = 4, capLine = 28;
+      y += 10;
+      ctx.font = F(28); ctx.fillStyle = "#4f5a64"; text("よく着る服（このうちどれか）", M, y); ctx.fillStyle = "#14181c";
+      y += 40;
+      for (let r = 0; r < thumbs.length; r += perRow) {
+        const row = thumbs.slice(r, r + perRow);
+        ctx.font = F(22);
+        const caps = row.map((t) => wrapLines(ctx, t.c.note || "", size));
+        for (let i = 0; i < row.length; i++) {
+          const x = M + i * (size + gap);
+          if (draw) drawCover(ctx, row[i].img, x, y, size, size);
+          let cy = y + size + 6;
+          for (const l of caps[i]) { if (l) text(l, x, cy); cy += capLine; }
+        }
+        const capLines = Math.max(...caps.map((c) => c.filter(Boolean).length));
+        y += size + 6 + capLines * capLine + 16;
+      }
+    }
+
+    // 更新日
+    y += 10;
+    ctx.font = F(24); ctx.fillStyle = "#4f5a64";
+    const upd = profile?.updated_at ? `${ymd(String(profile.updated_at).slice(0, 10))}更新` : "";
+    text(upd, M, y);
+    y += 30;
+    return y + M;
   }
 
-  ctx.font = F(24); ctx.fillStyle = "#4f5a64";
-  const upd = profile?.updated_at ? `${ymd(String(profile.updated_at).slice(0, 10))}更新` : "";
-  ctx.fillText(upd, M, H - M - 24);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = 200;
+  const height = Math.ceil(layout(c.getContext("2d"), false));
+  c.height = height;   // 高さを変えると描画の設定は初期に戻る（layout の中で毎回設定し直す）
+  layout(c.getContext("2d"), true);
 
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("画像を作れませんでした"))), "image/jpeg", 0.9));
 }
