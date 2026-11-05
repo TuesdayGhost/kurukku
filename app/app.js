@@ -436,7 +436,7 @@ function updateDisplay(np, occ, active) {
   if (active.length) {
     const items = active.map((s) => {
       const p = person(s.person_id);
-      return `<div class="item">${p && !p.is_patient ? `<div class="who-n">${esc(p.name)}</div>` : ""}<div class="what-n">${esc(s.title)}</div>${s.display_text ? `<div class="sub-n">${esc(s.display_text)}</div>` : ""}${s.start_time ? `<div class="time-n">${esc(S.hm(s.start_time))}</div>` : ""}</div>`;
+      return `<div class="item">${p && !p.is_patient ? `<div class="who-n">${esc(p.name)}</div>` : ""}<div class="what-n">${esc(s.title)}</div>${s.display_text ? `<div class="sub-n">${esc(s.display_text)}</div>` : ""}${s.start_time ? `<div class="time-n num">${clockHTML(s.start_time)}</div>` : ""}</div>`;
     }).join("");
     setHTML($("notice"), `<div class="notice ${active.length > 1 ? "many" : ""}" role="alert">
       <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${clockHTML(np.time)}</span></div>
