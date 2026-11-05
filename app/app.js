@@ -1278,6 +1278,7 @@ function settingsHTML() {
   </section>
   <section class="card"><h2>天気の地域</h2>
     <p class="hint">いまの設定：<strong id="weather-label"></strong></p>
+    <p class="hint">天気のデータ：<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>（CC BY 4.0）</p>
     <form id="place-form" class="row">
       <label class="field"><span>地名で探す</span><input type="text" id="place-q" maxlength="30" placeholder="例：泉区、仙台" required></label>
       <button class="btn" type="submit">探す</button>
