@@ -127,6 +127,16 @@ export function spokenTime(t) {
   return `${h}時${m}分`;
 }
 
+/**
+ * 時計の表示（11/5 決定：時計だけ12時間表記に「午前・午後」を付ける。予定の時刻は 9:00 のまま）
+ * "18:30:00" → { ampm: "午後", hm: "6:30" }。0時台と12時台は 12 と書く（読み上げの spokenTime と同じ）
+ */
+export function clock12(t) {
+  const [h24, m] = normTime(t).split(":").map(Number);
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  return { ampm: h24 < 12 ? "午前" : "午後", hm: `${h}:${String(m).padStart(2, "0")}` };
+}
+
 function intro(pigeonName) {
   return pigeonName ? `くるっくー。${pigeonName}です。` : "くるっくー。";
 }

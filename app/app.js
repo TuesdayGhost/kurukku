@@ -385,14 +385,14 @@ function updateDisplay(np, occ, active) {
   // 夜：暗い画面で日付・時計・ひとことだけを出し続ける（画面は消さない）
   setHTML($("night"), night ? `<div class="night-screen" aria-label="夜の表示">
       <p class="n-date">${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</p>
-      <p class="n-clock num">${np.time.slice(0, 5)}</p>
+      <p class="n-clock num">${clockHTML(np.time)}</p>
       <p class="n-text">今は夜です。おやすみなさい</p>
       ${sound.isReady() ? "" : `<button class="tap-sound n-tap" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}
     </div>` : "");
   $("date").textContent = `${np.m}月${np.d}日`;
   $("wday").textContent = `${S.WEEKDAYS[np.dow]}曜日`;
   setHTML($("weather"), weatherHTML(np));
-  $("clock").textContent = np.time.slice(0, 5);
+  setHTML($("clock"), clockHTML(np.time));
 
   // ふだんの画面：ごはん・お薬はお知らせ中だけ、終わった予定は消す（11/4 決定）
   const shown = S.homeItems(occ, active, np.time);
@@ -439,7 +439,7 @@ function updateDisplay(np, occ, active) {
       return `<div class="item">${p && !p.is_patient ? `<div class="who-n">${esc(p.name)}</div>` : ""}<div class="what-n">${esc(s.title)}</div>${s.display_text ? `<div class="sub-n">${esc(s.display_text)}</div>` : ""}${s.start_time ? `<div class="time-n">${esc(S.hm(s.start_time))}</div>` : ""}</div>`;
     }).join("");
     setHTML($("notice"), `<div class="notice ${active.length > 1 ? "many" : ""}" role="alert">
-      <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${np.time.slice(0, 5)}</span></div>
+      <div class="top"><span>${np.m}月${np.d}日 ${S.WEEKDAYS[np.dow]}曜日</span><span class="clock-s">${clockHTML(np.time)}</span></div>
       <div class="items">${items}</div>
       <div class="pigeon"><span>${pigeonName() ? `${esc(pigeonName())}からのお知らせ` : "くるっくー　お知らせです"}</span>${sound.isBusy() ? `<button class="btn stop-sound" type="button" data-act="stop-sound">音を止める</button>` : ""}${sound.isReady() ? "" : `<button class="tap-sound" type="button" data-act="unlock">音を出すには、画面に一度さわってください</button>`}</div></div>`);
   } else {
@@ -449,6 +449,12 @@ function updateDisplay(np, occ, active) {
 
 // ---------- 今日の予定を聞く（11/5 決定） ----------
 // 父が文字を読めなくなっても、お知らせを聞き逃しても、知りたいときに自分で聞ける。天気は読まない。
+/** 時計：小さめの「午前／午後」＋12時間の時刻 */
+function clockHTML(time) {
+  const c = S.clock12(time);
+  return `<span class="ampm">${c.ampm}</span>${c.hm}`;
+}
+
 async function onReadAloud() {
   if (sound.isReading()) { sound.stopReading(); tick(); return; }
   if (!sound.isReady()) await sound.unlock();

@@ -100,6 +100,8 @@ body.is-night { background: var(--night-bg); }
 }
 .night-screen p { margin: 0; }
 .n-date { font-size: clamp(22px, 5vmin, 60px); color: var(--night-muted); }
+.ampm { font-size: 0.32em; font-weight: 700; letter-spacing: 0.05em; margin-right: 0.25em; vertical-align: 0.15em; }
+.clock-s .ampm { font-size: 0.55em; }
 .n-clock { font-size: clamp(72px, 26vmin, 300px); font-weight: 500; line-height: 1; letter-spacing: 0.02em; }
 .n-text { font-size: clamp(24px, 6vmin, 72px); }
 .n-tap { color: var(--night-muted); border-color: var(--night-muted); margin-top: 3vmin; }

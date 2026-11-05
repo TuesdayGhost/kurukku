@@ -135,3 +135,11 @@ test("「今日の予定を聞く」の読み上げ文（11/5）", () => {
   const t2 = S.readAloudText({ np: { ...np, time: "18:00:00" }, items: [], people, pigeonName: "" });
   assert.equal(t2, "くるっくー。11月5日、木曜日。今は午後6時です。このあとの予定はありません。");
 });
+
+test("clock12: 時計は12時間表記に午前・午後", async () => {
+  const { clock12 } = await import("../app/schedule.js");
+  assert.deepEqual(clock12("09:05:00"), { ampm: "午前", hm: "9:05" });
+  assert.deepEqual(clock12("18:30:00"), { ampm: "午後", hm: "6:30" });
+  assert.deepEqual(clock12("12:00:00"), { ampm: "午後", hm: "12:00" });
+  assert.deepEqual(clock12("00:15:00"), { ampm: "午前", hm: "12:15" });
+});
