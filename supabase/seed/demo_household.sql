@@ -1,6 +1,6 @@
 -- デモ用の家「豆田家」に入れる架空のデータ（11/4）
 -- 人物・予定・本人情報はすべて架空。実在の家族の情報は含まない。
---   豆田 鳩蔵（お父さん・本人）／豆田 くる子（お母さん）／豆田 ぽっぽ（家族・シフト勤務）／鳩「はとやま」
+--   豆田 鳩蔵（お父さん・本人）／豆田 くる子（お母さん）／豆田 はと子（家族・シフト勤務）／鳩「はとやま」
 -- 使い方：:demo_id を、デモ用の家の id に置き換えて実行する。
 -- 家と「お父さん」「お母さん」は先にアプリから作っておく（ない人はここで作る）。
 -- 10月のデイの行事など「先月の実際の予定をもとにしたサンプル」は、別のファイルで追加する。
@@ -23,8 +23,8 @@ begin
   if dad is null then insert into public.people (household_id, name, is_patient, sort_order) values (hid, 'お父さん', true, 0) returning id into dad; end if;
   select id into mom from public.people where household_id = hid and name = 'お母さん';
   if mom is null then insert into public.people (household_id, name, is_patient, sort_order) values (hid, 'お母さん', false, 1) returning id into mom; end if;
-  select id into me from public.people where household_id = hid and name = 'ぽっぽ';
-  if me is null then insert into public.people (household_id, name, is_patient, sort_order) values (hid, 'ぽっぽ', false, 2) returning id into me; end if;
+  select id into me from public.people where household_id = hid and name = 'はと子';
+  if me is null then insert into public.people (household_id, name, is_patient, sort_order) values (hid, 'はと子', false, 2) returning id into me; end if;
 
   -- お父さんの毎日の予定（10月から）
   insert into public.schedules (household_id, person_id, title, kind, weekdays, valid_from, start_time, notify_from, notify_until) values
@@ -39,7 +39,7 @@ begin
   insert into public.schedules (household_id, person_id, title, kind, weekdays, valid_from, start_time, end_time) values
     (hid, mom, '買い物', 'weekly', '{3}', '2026-10-01', '14:00', '15:30');
 
-  -- ぽっぽ：シフト勤務（10月〜11月上旬の架空のシフト）
+  -- はと子：シフト勤務（10月〜11月上旬の架空のシフト）
   insert into public.schedules (household_id, person_id, title, kind, on_date, start_time, end_time)
   select hid, me, '仕事', 'once', d::date,
          case when extract(dow from d) in (2, 5) then '13:00'::time else '09:00'::time end,
