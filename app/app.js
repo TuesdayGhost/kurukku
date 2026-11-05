@@ -86,22 +86,38 @@ async function boot() {
   setInterval(refresh, REFRESH_MS);
   setInterval(() => updateWeather(), 60 * 1000);
   addEventListener("hashchange", mount);
-  addEventListener("online", refresh);
+  addEventListener("online", reconnect);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") { refresh(); if (state.view === "display") keepAwake(); }
+    if (document.visibilityState === "visible") { reconnect(); if (state.view === "display") keepAwake(); }
   });
   for (const ev of ["pointerdown", "keydown", "input"]) addEventListener(ev, () => { lastInteraction = Date.now(); }, { passive: true });
   addEventListener("keydown", (e) => { if (e.key === "Escape" && state.view === "display" && sound.isBusy()) sound.stopAll(); });
   addEventListener("pointerdown", onAnyTap, { passive: true });
 }
 
+let memberRetry = null;
 async function loadMember() {
-  if (!state.session) { state.member = null; stopRealtime(); mount(); return; }
+  clearTimeout(memberRetry);
+  if (!state.session) { state.member = null; state.memberError = null; stopRealtime(); mount(); return; }
   const { data, error } = await sb.from("members").select("*").eq("user_id", state.session.user.id).maybeSingle();
-  if (error) state.syncError = errMsg(error);
+  if (error) {
+    // 通信できないときは「家に未所属」と区別し、参加画面を出さずに自動で再試行する
+    // （11/6 レビュー：停電などで Wi-Fi より先に端末が起動すると、父の部屋の画面が「招待コードで参加する」のまま止まっていた）
+    state.memberError = errMsg(error);
+    memberRetry = setTimeout(loadMember, 15 * 1000);
+    mount();
+    return;
+  }
+  state.memberError = null;
   state.member = data || null;
   if (state.member) { await refresh(); startRealtime(); }
   mount();
+}
+
+// 電波が戻ったとき・画面に戻ったとき：起動時の読み込みに失敗していれば、まずそこからやり直す
+function reconnect() {
+  if (state.session && !state.member) return loadMember();
+  return refresh();
 }
 
 let refreshing = null;
@@ -159,7 +175,7 @@ function stopRealtime() { if (channel) { sb.removeChannel(channel); channel = nu
 // ---------- 画面の切り替え ----------
 function currentView() {
   if (!state.session) return "login";
-  if (!state.member) return "join";
+  if (!state.member) return state.memberError ? "retry" : "join";
   const h = location.hash.replace("#", "");
   if (role() === "display") return "display";
   if (role() === "living") return h === "add" ? "add" : "display";
@@ -173,6 +189,7 @@ function mount() {
   if (v !== "add") draft = freshDraft(draft.person);
   document.body.dataset.view = v;
   if (v === "login") $app.innerHTML = viewLogin();
+  else if (v === "retry") $app.innerHTML = viewRetry();
   else if (v === "join") $app.innerHTML = viewJoin();
   else if (v === "display") { $app.innerHTML = viewDisplay(); keepAwake(); }
   else $app.innerHTML = viewFamily(v);
@@ -533,6 +550,19 @@ function viewLogin() {
   </main>`;
 }
 
+// 起動時に家の情報を読めなかったとき（通信できない等）。自動で再試行し、つながれば本来の画面に戻る
+function viewRetry() {
+  return `<main class="page">
+    <header class="bar"><h1 class="logo-h1">${LOGO}<span class="vh">くるっくー</span></h1></header>
+    <section class="card">
+      <h2>接続できません</h2>
+      <p class="error">${esc(state.memberError || "")}</p>
+      <p class="hint">電波やWi-Fiがつながると、自動でいつもの画面に戻ります（15秒ごとに試します）。</p>
+      <button class="btn primary" type="button" data-act="retry-member">いま試す</button>
+    </section>
+  </main>`;
+}
+
 function viewJoin() {
   return `<main class="page">
     <header class="bar"><h1 class="logo-h1">${LOGO}<span class="vh">くるっくー</span></h1><button class="btn small" data-act="logout">ログアウト</button></header>
@@ -727,15 +757,21 @@ function renderRescueCard() {
   prepareShare();
 }
 
+let shareGen = 0;
 async function prepareShare() {
+  // 「住所も入れる」を続けて切り替えたとき、先に作り始めた古い画像で上書きしない（文字と画像の住所の有無がずれないように。11/6 レビュー）
+  const gen = ++shareGen;
   const p = rescue.profile || {};
-  $("rc-text").value = R.cardText(p, rescue.clothes, state.today, { withAddress: rescue.withAddress });
+  const withAddress = rescue.withAddress;
+  $("rc-text").value = R.cardText(p, rescue.clothes, state.today, { withAddress });
   const btn = $("rc-share");
   btn.disabled = true; btn.textContent = "画像を作っています…";
+  rescue.file = null;
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    const blob = await R.cardImage({ profile: p, clothes: rescue.clothes, todayStr: state.today, withAddress: rescue.withAddress,
+    const blob = await R.cardImage({ profile: p, clothes: rescue.clothes, todayStr: state.today, withAddress,
       faceUrl: rescue.urls.get(p.face_photo_path), clothesUrls: rescue.clothes.map((c) => rescue.urls.get(c.photo_path)), font: CARD_FONT });
+    if (gen !== shareGen) return;
     if (rescue.imageUrl) URL.revokeObjectURL(rescue.imageUrl);
     rescue.imageUrl = URL.createObjectURL(blob);
     rescue.file = new File([blob], "kurukku-card.jpg", { type: "image/jpeg" });
@@ -743,6 +779,7 @@ async function prepareShare() {
     btn.disabled = false;
     btn.textContent = navigator.canShare?.({ files: [rescue.file] }) ? "画像と文字を送る" : "画像を表示する";
   } catch (e) {
+    if (gen !== shareGen) return;
     btn.textContent = "画像を作れませんでした";
   }
 }
@@ -1320,7 +1357,7 @@ function settingsHTML() {
     <p class="hint">いまの設定：<strong id="weather-label"></strong></p>
     <p class="hint">天気のデータ：<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>（CC BY 4.0）</p>
     <form id="place-form" class="row">
-      <label class="field"><span>地名で探す</span><input type="text" id="place-q" maxlength="30" placeholder="例：泉区、仙台" required></label>
+      <label class="field"><span>地名で探す</span><input type="text" id="place-q" maxlength="30" placeholder="例：千代田区、東京" required></label>
       <button class="btn" type="submit">探す</button>
     </form>
     <ul class="list" id="place-results"></ul>
@@ -1388,6 +1425,7 @@ $app.addEventListener("click", async (e) => {
   if (act === "unlock") { const ok = await sound.unlock(); toast(ok ? "音を出せるようになりました" : "音を有効にできませんでした", !ok); tick(); }
   if (act === "unlock-test") { await sound.unlock(); sound.announce({ times: 1, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}音のテストです。` }); }
   if (act === "sheet-close") $("sheet").innerHTML = "";
+  if (act === "retry-member") guarded(btn, loadMember);
   if (act === "logout-ask") { if (!needsConfirm(btn, "もう一度押すとログアウト")) { stopRealtime(); await sb.auth.signOut(); location.hash = ""; } }
   if (act === "logout") { stopRealtime(); await sb.auth.signOut(); location.hash = ""; }
   if (act === "pick-person") { draft.person = id; renderChips(); }

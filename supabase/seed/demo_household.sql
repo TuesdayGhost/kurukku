@@ -15,8 +15,8 @@ begin
   end if;
   update public.households
      set is_demo = true, pigeon_name = coalesce(pigeon_name, 'はとやま'),
-         weather_label = coalesce(weather_label, '仙台市泉区'),
-         weather_lat = coalesce(weather_lat, 38.3228), weather_lon = coalesce(weather_lon, 140.8818)
+         weather_label = coalesce(weather_label, '東京都千代田区'),   -- 架空の家の地域。実在の家の地域はリポジトリに書かない
+         weather_lat = coalesce(weather_lat, 35.6940), weather_lon = coalesce(weather_lon, 139.7536)
    where id = hid;
 
   select id into dad from public.people where household_id = hid and name = 'お父さん';
