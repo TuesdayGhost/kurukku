@@ -149,6 +149,7 @@ input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-dat
 .btn:disabled { opacity: 0.5; cursor: default; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .list li { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.rename-form { flex: 1; }
 .list li:last-child { border-bottom: 0; padding-bottom: 0; }
 .list .main { min-width: 0; flex: 1 1 200px; overflow-wrap: anywhere; }
 .list .sub { color: var(--muted); font-size: 0.88rem; }

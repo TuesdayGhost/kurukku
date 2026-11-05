@@ -1368,8 +1368,16 @@ function settingsHTML() {
   </section>`;
 }
 const roleLabel = (r) => ({ display: "父の部屋（見るだけ）", living: "居間", family: "家族" }[r] || r);
+// 名前を直している人（11/5 追加：誤字や誤操作で登録しても直せるように。消す操作は作らない）
+let renamingPerson = null;
 function peopleListHTML() {
-  return patientFirst().map((p) => `<li><div class="main">${esc(p.name)}${p.is_patient ? '<span class="badge">本人</span>' : ""}</div></li>`).join("")
+  return patientFirst().map((p) => p.id === renamingPerson
+    ? `<li><form class="row rename-form" id="person-rename" data-id="${p.id}">
+        <label class="field"><span>新しい名前</span><input type="text" id="person-rename-name" maxlength="20" required value="${esc(p.name)}"></label>
+        <button class="btn primary" type="submit">保存</button>
+        <button class="btn" type="button" data-act="person-rename-cancel">やめる</button></form></li>`
+    : `<li><div class="main">${esc(p.name)}${p.is_patient ? '<span class="badge">本人</span>' : ""}</div>
+        <button class="btn small" type="button" data-act="person-rename" data-id="${p.id}">名前を直す</button></li>`).join("")
     || `<li class="hint">まだいません。最初に「本人」と家族を登録してください。</li>`;
 }
 function memberListHTML() {
@@ -1407,6 +1415,8 @@ $app.addEventListener("click", async (e) => {
   if (act === "stop-sound") { sound.stopAll(); tick(); return; }
   if (act === "read-aloud") { await onReadAloud(); return; }
   if (act === "chime-try") { await sound.unlock(); sound.announce({ times: 2, kind: $("chime-kind").value, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}お父さん、6時半から夕ごはんです。` }); return; }
+  if (act === "person-rename") { renamingPerson = id; setHTML($("people-list"), peopleListHTML()); $("person-rename-name")?.focus(); return; }
+  if (act === "person-rename-cancel") { renamingPerson = null; setHTML($("people-list"), peopleListHTML()); return; }
   if (act === "read-save") guarded(btn, async () => {
     const { error } = await sb.from("households").update({ read_button_living: $("read-living").checked, read_button_display: $("read-display").checked }).eq("id", state.member.household_id);
     if (error) throw error;
@@ -1616,6 +1626,16 @@ $app.addEventListener("submit", async (e) => {
     if (!name) throw new Error("名前を入れてください");
     const { error } = await sb.from("people").insert({ name, is_patient: $("person-patient").checked, sort_order: state.people.length });
     if (error) throw error; form.reset(); toast(`${name} を登録しました`); await refresh();
+  });
+  if (form.id === "person-rename") return guarded(btn, async () => {
+    const name = $("person-rename-name").value.trim();
+    if (!name) throw new Error("名前を入れてください");
+    const old = person(form.dataset.id);
+    if (old && old.name === name) { renamingPerson = null; setHTML($("people-list"), peopleListHTML()); return; }
+    const { error } = await sb.from("people").update({ name }).eq("id", form.dataset.id);
+    if (error) throw error;
+    renamingPerson = null; toast(`名前を「${name}」に直しました`); await refresh();
+    setHTML($("people-list"), peopleListHTML());
   });
   if (form.id === "invite-form") return guarded(btn, async () => {
     const name = $("invite-name").value.trim();
