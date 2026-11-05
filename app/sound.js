@@ -161,7 +161,7 @@ function speakNow(text) {
     u.onend = finish; u.onerror = finish;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
-    setTimeout(finish, 15000);
+    setTimeout(finish, Math.max(15000, text.length * 300));   // 長い文でも途中で終わった扱いにしない
   });
 }
 
@@ -235,4 +235,23 @@ export function coo(index = Math.floor(Math.random() * COOS.length)) {
   const t0 = ctx.currentTime + 0.02;
   for (const n of c.notes) cooNote(t0, n);
   return c;
+}
+
+// ---------- 「今日の予定を聞く」（11/5 決定） ----------
+// 自分で始めた読み上げは、もう一度押すと止まる（SC 1.4.2）。お知らせ中は読まない。
+let reading = false;
+export function isReading() { return reading; }
+/** 読み上げる。始められたら true（お知らせ中・すでに読んでいるときは false） */
+export function readAloud(text) {
+  if (isBusy() || reading) return false;
+  reading = true;
+  const gen = generation;
+  speakNow(text).finally(() => { if (gen === generation || reading) reading = false; });
+  return true;
+}
+/** 読み上げを止める */
+export function stopReading() {
+  if (!reading) return;
+  reading = false;
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
 }

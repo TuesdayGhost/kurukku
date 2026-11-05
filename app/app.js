@@ -201,6 +201,9 @@ function fill() {
   const hn = $("hh-name"); if (hn) hn.textContent = state.household?.name || "";
   const db = $("demo-badge"); if (db) db.hidden = !state.household?.is_demo;
   const pn = $("pigeon-name"); if (pn && !pn.dataset.touched) pn.value = pigeonName();
+  const rl = $("read-living"), rd = $("read-display");
+  if (rl && !rl.dataset.touched) rl.checked = state.household?.read_button_living !== false;
+  if (rd && !rd.dataset.touched) rd.checked = !!state.household?.read_button_display;
   const ck = $("chime-kind"); if (ck && !ck.dataset.touched) ck.value = state.household?.chime_kind || "chime";
   const ns = $("night-start"), ne = $("night-end");
   if (ns && !ns.dataset.touched) ns.value = S.hm(state.household?.night_start || "21:00");
@@ -357,6 +360,7 @@ function viewDisplay() {
     <p class="plan-more" id="plan-more" hidden>▼ ほかにも予定があります</p>
     <section class="news" aria-label="家族からの知らせ">
       <div id="msgs" class="msgs"></div>
+      <div class="read-row" id="read-row"></div>
       <div class="status-line" id="status"></div>
     </section>
     <section class="pigeon-corner" aria-label="${esc(pigeonName() || "鳩")}">
@@ -422,6 +426,13 @@ function updateDisplay(np, occ, active) {
   setHTML($("status"), parts.join(""));
 
   state.noticeActive = active.length > 0;
+  // 今日の予定を聞くボタン（端末ごとに出す・出さないを家族が決める。お知らせ中・夜は出さない）
+  const h = state.household || {};
+  const showRead = !night && !active.length && (role() === "living" ? h.read_button_living !== false
+    : role() === "display" ? !!h.read_button_display : (h.read_button_living !== false || !!h.read_button_display));
+  setHTML($("read-row"), showRead ? (sound.isReading()
+    ? `<button class="btn read-btn reading" type="button" data-act="read-aloud">${icon("square", "read-ic")}<span>読むのをやめる</span></button>`
+    : `<button class="btn read-btn" type="button" data-act="read-aloud">${icon("volume-2", "read-ic")}<span>今日の予定を聞く</span></button>`) : "");
   if (active.length) {
     const items = active.map((s) => {
       const p = person(s.person_id);
@@ -434,6 +445,23 @@ function updateDisplay(np, occ, active) {
   } else {
     setHTML($("notice"), "");
   }
+}
+
+// ---------- 今日の予定を聞く（11/5 決定） ----------
+// 父が文字を読めなくなっても、お知らせを聞き逃しても、知りたいときに自分で聞ける。天気は読まない。
+async function onReadAloud() {
+  if (sound.isReading()) { sound.stopReading(); tick(); return; }
+  if (!sound.isReady()) await sound.unlock();
+  const np = S.nowParts(new Date(), TIMEZONE);
+  const occ = S.occurrencesOn(state.schedules, state.exceptions, np.date);
+  const active = S.activeNotices(occ, np.time);
+  if (active.length) return;   // お知らせ中は読まない
+  const text = S.readAloudText({ np, items: S.homeItems(occ, active, np.time), people: patientFirst(),
+    messages: S.activeMessages(state.messages), pigeonName: pigeonName() });
+  if (sound.readAloud(text) && state.member) {
+    sb.from("activity_log").insert({ household_id: state.member.household_id, kind: "read_aloud" }).then(() => {});
+  }
+  tick();
 }
 
 // ---------- おしゃべり鳩（ちょっと役に立たない鳩） ----------
@@ -1268,6 +1296,12 @@ function settingsHTML() {
       <button class="btn primary" type="button" data-act="chime-save">保存</button>
     </div>
   </section>
+  <section class="card"><h2>今日の予定を聞くボタン</h2>
+    <p class="hint">表示端末に「今日の予定を聞く」ボタンを出すと、押したときに日付・時刻・これからの予定・家族の知らせを読み上げます。もう一度押すと止まります。</p>
+    <label class="check"><input type="checkbox" id="read-living"> 居間に出す</label>
+    <label class="check"><input type="checkbox" id="read-display"> 父の部屋に出す（よく触ると何度も鳴ります）</label>
+    <button class="btn" type="button" data-act="read-save">保存</button>
+  </section>
   <section class="card"><h2>夜の表示</h2>
     <p class="hint">この時間は、表示端末が暗い画面になり、日付と時計と「今は夜です」だけを出します（画面は消えません）。</p>
     <form id="night-form" class="row">
@@ -1328,7 +1362,15 @@ $app.addEventListener("click", async (e) => {
   const act = btn.dataset.act, id = btn.dataset.id;
   if (act === "pigeon") { onPigeon(); return; }
   if (act === "stop-sound") { sound.stopAll(); tick(); return; }
+  if (act === "read-aloud") { await onReadAloud(); return; }
   if (act === "chime-try") { await sound.unlock(); sound.announce({ times: 2, kind: $("chime-kind").value, text: `くるっくー。${pigeonName() ? pigeonName() + "です。" : ""}お父さん、6時半から夕ごはんです。` }); return; }
+  if (act === "read-save") guarded(btn, async () => {
+    const { error } = await sb.from("households").update({ read_button_living: $("read-living").checked, read_button_display: $("read-display").checked }).eq("id", state.member.household_id);
+    if (error) throw error;
+    delete $("read-living").dataset.touched; delete $("read-display").dataset.touched;
+    toast("読み上げボタンの設定を保存しました");
+    await refresh();
+  });
   if (act === "chime-save") guarded(btn, async () => {
     const kind = $("chime-kind").value;
     const { error } = await sb.from("households").update({ chime_kind: kind }).eq("id", state.member.household_id);
@@ -1451,7 +1493,7 @@ function syncNotifyDefaults(prefix = "add-") {
   }
 }
 $app.addEventListener("input", (e) => {
-  if (["pigeon-name", "night-start", "night-end", "chime-kind", "add-home"].includes(e.target.id)) e.target.dataset.touched = "1";
+  if (["pigeon-name", "night-start", "night-end", "chime-kind", "add-home", "read-living", "read-display"].includes(e.target.id)) e.target.dataset.touched = "1";
   if (e.target.id === "add-title") syncHomeDefault();
 });
 $app.addEventListener("change", (e) => {

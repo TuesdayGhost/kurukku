@@ -324,3 +324,9 @@ body.is-night .pigeon-btn { color: var(--night-muted); --pigeon-bg: var(--night-
 .gz-wordmark .wordmark { height: 36px; width: auto; display: block; }
 /* 右下の鳩は画面の内側（左）を向く（11/5 葵依：外を向いていたので左右反転） */
 .pigeon-btn .pigeon-ic { transform: scaleX(-1); }
+
+/* 今日の予定を聞くボタン（11/5）：見て分かる大きなボタン */
+.read-row:empty { display: none; }
+.read-btn { gap: 0.4em; font-size: clamp(18px, 3.4vmin, 40px); min-height: clamp(52px, 9vmin, 104px); padding: 0 0.9em; background: var(--surface); }
+.read-btn .read-ic { width: 1.3em; height: 1.3em; }
+.read-btn.reading { background: var(--accent); color: var(--surface); }

@@ -122,3 +122,16 @@ test("本人のふだんの画面：ごはん・お薬はお知らせ中だけ�
   assert.equal(S.defaultShowOnHome("お薬"), false);
   assert.equal(S.defaultShowOnHome("デイ"), true);
 });
+
+test("「今日の予定を聞く」の読み上げ文（11/5）", () => {
+  const people = [{ id: "d", name: "お父さん", is_patient: true }, { id: "m", name: "お母さん", is_patient: false }, { id: "p", name: "ぽっぽ", is_patient: false }];
+  const items = [
+    { person_id: "d", title: "デイ", display_text: "芋煮会と運動会", start_time: "09:00:00", end_time: "17:00:00" },
+    { person_id: "m", title: "買い物", start_time: "15:00:00", end_time: "16:30:00" },
+  ];
+  const np = { m: 11, d: 5, dow: 4, time: "10:34:00" };
+  const t = S.readAloudText({ np, items, people, messages: [{ person_id: "p", body: "6時半ごろ帰ります" }], pigeonName: "はとやま" });
+  assert.equal(t, "くるっくー。はとやまです。11月5日、木曜日。今は午前10時34分です。今日の予定は、9時からデイ、芋煮会と運動会です。お母さんは、3時から買い物で、4時半に帰ってきます。ぽっぽから、お知らせです。6時半ごろ帰ります");
+  const t2 = S.readAloudText({ np: { ...np, time: "18:00:00" }, items: [], people, pigeonName: "" });
+  assert.equal(t2, "くるっくー。11月5日、木曜日。今は午後6時です。このあとの予定はありません。");
+});

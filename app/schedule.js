@@ -183,3 +183,31 @@ export function homeItems(occurrences, active, time) {
     return !endish || endish >= now;
   });
 }
+
+/**
+ * 「今日の予定を聞く」で読む文（11/5 決定。天気は読まない）
+ * 日付・曜日・時刻 → 本人のこれからの予定 → 家族のこれからの予定（戻る時刻も） → 家族の知らせ
+ * items は本人のふだんの画面に出ている予定（homeItems の結果）を渡す
+ */
+export function readAloudText({ np, items, people, messages = [], pigeonName = "" }) {
+  const parts = [intro(pigeonName)];
+  // 今の時刻は朝か夕方か分かるよう「午前・午後」を付ける（予定の時刻はお知らせと同じ読み方）
+  const ampm = Number(normTime(np.time).slice(0, 2)) < 12 ? "午前" : "午後";
+  parts.push(`${np.m}月${np.d}日、${WEEKDAYS[np.dow]}曜日。今は${ampm}${spokenTime(np.time)}です。`);
+  const now = normTime(np.time);
+  const upcoming = items.filter((s) => !s.start_time || normTime(s.start_time) >= now || (s.end_time && normTime(s.end_time) >= now));
+  const what = (s) => `${s.start_time ? `${spokenTime(s.start_time)}から` : ""}${s.title}${s.display_text ? `、${s.display_text}` : ""}`;
+  const patient = people.find((p) => p.is_patient);
+  const mine = patient ? upcoming.filter((s) => s.person_id === patient.id) : [];
+  parts.push(mine.length ? `今日の予定は、${mine.map(what).join("。")}です。` : "このあとの予定はありません。");
+  for (const p of people.filter((x) => !x.is_patient)) {
+    const theirs = upcoming.filter((s) => s.person_id === p.id);
+    if (!theirs.length) continue;
+    parts.push(theirs.map((s) => `${p.name}は、${what(s)}${s.end_time ? `で、${spokenTime(s.end_time)}に帰ってきます` : ""}。`).join(""));
+  }
+  for (const m of messages) {
+    const p = people.find((x) => x.id === m.person_id);
+    parts.push(`${p ? p.name + "から、" : ""}お知らせです。${m.body}`);
+  }
+  return parts.join("");
+}
