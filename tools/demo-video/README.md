@@ -8,3 +8,21 @@
 - 要るもの：Playwright（`npm i -D playwright && npx playwright install chromium`）、ffmpeg、日本語フォント（IPAゴシック等）
 - CDN に出られない環境では、supabase-js の ESM 束を用意して `SUPABASE_ESM=path node tools/demo-video/shots.mjs` のように渡す
 - 本番の素材の名前と撮り方：`docs/demo/shot-list.md`。撮った動画・声はリポジトリに入れない
+
+## 差し込み（11/6 作成。アンバサダーの「10のコツ」から 4 つ）
+
+`tools/demo-video/inserts/` の HTML を `render-inserts.mjs` が 30fps で1コマずつ描いて mp4 にする。
+
+| ファイル | 中身 | 長さ | 使う場面 |
+| --- | --- | --- | --- |
+| `flight.html` | 家族のスマホから、鳩が放物線で手紙を運び、父の部屋と居間の端末に同じ知らせが届く（構成図のアニメ） | 6秒 | 0:35 知らせの冒頭 |
+| `countup.html` | 鳩月報「今月の記録」のタイルの数字がカウントアップ | 5秒 | 2:00 紙面のあと |
+| `commits.html` | git log のコミット履歴が日ごとに積み上がる（本物。`out/commits.json` から） | 8秒 | 2:20 Claude の場面 |
+| `slider.html` | Skill で見直す前と後の分割スライダー | 6秒 | 2:20 の続き |
+
+作り方：
+```
+TZ=Asia/Tokyo git log --reverse --format='%ad|%s' --date=format-local:'%m/%d|%H:%M' > /tmp/log.txt  # → out/commits.json に {day,time,msg} の配列として保存
+node tools/demo-video/render-inserts.mjs            # 4つとも。名前を渡せばその分だけ
+```
+出力の `out/` はリポジトリに入れない（`.gitignore`）。

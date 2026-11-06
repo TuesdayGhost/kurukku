@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<title>差し込み：今月の記録のカウントアップ</title>
+<style>
+  :root { --paper:#fbfaf6; --ink:#141414; --red:#c8102e; --bg:#e9edf1; }
+  html,body { margin:0; width:1920px; height:1080px; overflow:hidden; background:var(--bg); color:var(--ink); font-family:"IPAPGothic","IPAGothic",sans-serif; }
+  .sheet { position:absolute; left:120px; top:90px; width:1680px; height:900px; background:var(--paper); border:4px solid var(--ink); padding:36px 48px; box-sizing:border-box; }
+  .mast { display:flex; align-items:baseline; gap:24px; border-bottom:6px double var(--ink); padding-bottom:10px; }
+  .mast .t { font-size:46px; font-weight:700; background:var(--red); color:#fff; padding:0 16px; letter-spacing:.15em; }
+  .mast .s { font-size:26px; }
+  h2 { margin:26px 0 14px; font-size:34px; }
+  .tiles { display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+  .tile { border:3px solid var(--ink); background:#fff; padding:18px 10px 14px; text-align:center; display:grid; justify-items:center; gap:4px; }
+  .tile .ic { width:64px; height:64px; }
+  .num { font-size:64px; font-weight:700; color:var(--red); line-height:1.1; font-variant-numeric:tabular-nums; }
+  .num small { font-size:26px; color:var(--ink); margin-left:2px; }
+  .lab { font-size:26px; font-weight:700; }
+  .who { font-size:20px; color:#555; }
+  .note { position:absolute; left:48px; bottom:30px; font-size:24px; color:#333; }
+</style></head>
+<body>
+<div class="sheet">
+  <div class="mast"><span class="t">鳩月報</span><span class="s">2026年10月号　今月の記録</span></div>
+  <h2>今月の記録</h2>
+  <div class="tiles" id="tiles"></div>
+  <div class="note">回数は記録から数えたものです。「予定」は予定の回数で、実際に出かけた回数ではありません。</div>
+</div>
+<script type="module">
+  import { icon } from "/app/icons.js";
+  import { pigeon } from "/app/brand.js";
+  window.DURATION = 5.0;
+  const TILES = [
+    ["coffee", 31, "回", "朝ごはん", "お父さん・予定"], ["bus", 9, "回", "デイ", "お父さん・予定"], ["briefcase", 21, "回", "仕事", "はと子・予定"],
+    ["shopping-cart", 4, "回", "買い物", "お母さん・予定"], ["moon", 1300, "time", "いちばん遅い戻り", "はと子・仕事・予定"],
+    ["pigeon", 42, "回", "はとやまがつつかれた", ""], ["mail", 7, "通", "家族の知らせ", ""], ["bell", 93, "回", "お知らせ", "表示"], ["camera", 3, "件", "ひとこと・写真", ""],
+  ];
+  const box = document.getElementById("tiles");
+  const nums = [];
+  for (const [ic, n, unit, lab, who] of TILES) {
+    const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `${ic === "pigeon" ? pigeon("ic").replace('class="ic"', 'class="ic" style="--pigeon-bg:#fff;color:#141414"') : icon(ic, "ic")}<div class="num"><span></span><small>${unit === "time" ? "" : unit}</small></div><div class="lab">${lab}</div><div class="who">${who}</div>`;
+    box.append(d); nums.push([d.querySelector(".num span"), n, unit]);
+  }
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  window.render = (t) => {
+    nums.forEach(([el, n, unit], i) => {
+      const u = easeOut((t - 0.3 - i * 0.14) / 1.5);
+      const v = Math.round(n * u);
+      el.textContent = unit === "time" ? `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}` : String(v);
+      el.parentElement.parentElement.style.opacity = String(clamp((t - 0.1 - i * 0.14) / 0.3));
+    });
+  };
+  window.render(0); window.ready = true;
+</script>
+</body></html>

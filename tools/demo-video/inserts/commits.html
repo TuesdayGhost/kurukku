@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<title>差し込み：コミット履歴（いつ作ったか）</title>
+<style>
+  html,body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#1f2a24; color:#e9edf1; font-family:"IPAPGothic","IPAGothic",sans-serif; }
+  .title { position:absolute; left:60px; top:44px; font-size:40px; font-weight:700; color:#9fd6c2; }
+  .count { position:absolute; right:80px; top:30px; text-align:right; }
+  .count b { font-size:96px; color:#f0b37e; font-variant-numeric:tabular-nums; line-height:1; }
+  .count span { font-size:30px; color:#c8d1cc; margin-left:10px; }
+  .cols { position:absolute; left:120px; right:120px; top:160px; height:640px; display:grid; grid-template-columns:repeat(7, 1fr); gap:24px; align-items:end; }
+  .col { position:relative; height:640px; border-bottom:3px solid #9fd6c2; }
+  .col .day { position:absolute; left:0; right:0; bottom:-56px; text-align:center; font-size:30px; font-weight:700; color:#e9edf1; }
+  .col .day small { display:block; font-size:22px; color:#9fd6c2; font-weight:500; }
+  .col .n { position:absolute; left:0; right:0; bottom:-100px; text-align:center; font-size:26px; color:#f0b37e; font-variant-numeric:tabular-nums; }
+  .dot { position:absolute; width:22px; height:22px; border-radius:50%; background:#f0b37e; transform:translate(-50%, 50%); }
+  .msg { position:absolute; left:120px; right:120px; bottom:90px; font-size:34px; color:#e9edf1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .msg b { color:#9fd6c2; margin-right:18px; font-variant-numeric:tabular-nums; }
+  .foot { position:absolute; left:120px; bottom:36px; font-size:22px; color:#9aa89f; }
+</style></head>
+<body>
+<div class="title">11月2日のキックオフから、毎日コミット</div>
+<div class="count"><b id="n">0</b><span>コミット</span></div>
+<div class="cols" id="cols"></div>
+<div class="msg" id="msg"></div>
+<div class="foot">リポジトリの git log より。ハッカソン期間中（11/2〜11/8）に作ったものだけ</div>
+<script>
+  const DAYS = [["11/02", "キックオフ"], ["11/03", ""], ["11/04", ""], ["11/05", ""], ["11/06", "レビュー"], ["11/07", "撮影"], ["11/08", "提出"]];
+  const cols = document.getElementById("cols");
+  const colEls = {};
+  for (const [d, note] of DAYS) { const c = document.createElement("div"); c.className = "col"; c.innerHTML = `<div class="day">${d.replace(/^11\//, "11/").replace(/^0/, "")}<small>${note}&nbsp;</small></div><div class="n"></div>`; cols.append(c); colEls[d] = c; }
+  let commits = [], dots = [];
+  fetch("/tools/demo-video/out/commits.json").then((r) => r.json()).then((list) => {
+    commits = list; const perDay = {};
+    // 日ごとに下から積む。1列に入りきらなければ横に並べる
+    for (const c of commits) {
+      const k = (perDay[c.day] = (perDay[c.day] || 0) + 1) - 1;
+      const col = colEls[c.day]; if (!col) continue;
+      const perRow = 5, row = Math.floor(k / perRow), i = k % perRow;
+      const dot = document.createElement("div"); dot.className = "dot";
+      dot.style.left = `${(i + 0.5) * (100 / perRow)}%`; dot.style.bottom = `${row * 30 + 12}px`;
+      col.append(dot); dots.push({ dot, c, col, k: k + 1 });
+    }
+    window.ready = true; window.render(0);
+  });
+  window.DURATION = 8.0;
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  window.render = (t) => {
+    const N = commits.length; if (!N) return;
+    const shown = Math.floor(clamp((t - 0.4) / 5.6) * N);
+    document.getElementById("n").textContent = String(shown);
+    const counts = {};
+    dots.forEach(({ dot, c, col, k }, i) => {
+      const on = i < shown; dot.style.opacity = on ? "1" : "0";
+      dot.style.transform = `translate(-50%, 50%) scale(${on ? 1 : 0.3})`;
+      if (on) counts[c.day] = k;
+    });
+    for (const [d] of DAYS) colEls[d].querySelector(".n").textContent = counts[d] ? `${counts[d]}件` : "";
+    const last = commits[Math.max(0, shown - 1)];
+    document.getElementById("msg").innerHTML = shown ? `<b>${last.day.replace(/^0/, "")} ${last.time}</b>${last.msg.replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch]))}` : "";
+  };
+</script>
+</body></html>
