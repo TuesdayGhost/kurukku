@@ -26,3 +26,14 @@ TZ=Asia/Tokyo git log --reverse --format='%ad|%s' --date=format-local:'%m/%d|%H:
 node tools/demo-video/render-inserts.mjs            # 4つとも。名前を渡せばその分だけ
 ```
 出力の `out/` はリポジトリに入れない（`.gitignore`）。
+
+## 本番の組み立て（11/6 用意。素材を入れ替えるだけ）
+
+```
+node tools/demo-video/render-inserts.mjs                 # 差し込み4本（初回だけ）
+node tools/demo-video/assemble.mjs <素材フォルダ> [出力mp4] # edit.json の編集表どおりにつなぐ
+```
+- 素材フォルダには `docs/demo/shot-list.md` の名前で動画と声を入れる（`N2_take2.wav` のように take 番号がついていれば、名前順で最初のものを使う）
+- `edit.json`：区間ごとの素材・切り出し秒・長さ・字幕・声の開始秒。合計時間は実行時に出る。足りない素材は地の色で埋めて続行する
+- 字幕は ASS で焼き込む（書体 Zen Kaku Gothic New。無ければ端末の日本語書体）。同じ内容の `.srt` も横に出す
+- 11/6 に仮の素材（静止画と無音）で最後まで通して 2:51 を確認
