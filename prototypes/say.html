@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鳩のセリフを読み上げる（デモ動画の収録用）</title>
+<style>
+  body { font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; line-height: 1.6; color: #14181c; background: #e9edf1; }
+  textarea { width: 100%; min-height: 120px; font: inherit; padding: 10px; border: 1px solid #c9d1d8; border-radius: 8px; }
+  button { font: inherit; font-weight: 700; min-height: 48px; padding: 8px 18px; border-radius: 8px; border: 1.5px solid #2f5d50; background: #2f5d50; color: #fff; margin: 8px 8px 0 0; }
+  button.plain { background: transparent; color: #2f5d50; }
+  .hint { color: #434c55; font-size: 0.9rem; }
+  .lines button { display: block; width: 100%; text-align: left; font-weight: 500; }
+</style>
+</head>
+<body>
+<h1>鳩のセリフを読み上げる</h1>
+<p class="hint">デモ動画の🕊️の部分を、アプリのお知らせと同じ声の設定（ja-JP・少しゆっくり・少し高め）で読みます。
+この画面を開いた端末で、画面録画（音あり）かボイスメモで録ってください。台本：docs/demo-script.md</p>
+<div class="lines" id="lines"></div>
+<p><textarea id="text">くるっくー。はとやまです。</textarea></p>
+<button id="speak" type="button">読み上げる</button>
+<button id="stop" type="button" class="plain">止める</button>
+<p class="hint" id="voice"></p>
+<script>
+  // アプリ（app/sound.js）と同じ設定：ja-JP の端末の声、rate 0.9、pitch 1.1
+  const LINES = [
+    "いまは、日付も天気も予定も、ここに出しておきます。何度でも、今日を確かめられます。",
+    "音で知らせたら、あとは静かに置いておきます。忘れても、もう一度見れば大丈夫。",
+    "忘れても、日々は残ります。",
+    "……くるっくー。",
+  ];
+  const $ = (id) => document.getElementById(id);
+  let voice = null;
+  function pick() {
+    const ja = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+    voice = ja.find((v) => v.localService) || ja[0] || null;
+    $("voice").textContent = voice ? `声：${voice.name}` : "日本語の声が見つかりません（端末の設定で日本語の音声を入れてください）";
+  }
+  pick(); speechSynthesis.addEventListener("voiceschanged", pick);
+  function say(text) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP"; u.rate = 0.9; u.pitch = 1.1;
+    if (voice) u.voice = voice;
+    speechSynthesis.speak(u);
+  }
+  for (const l of LINES) { const b = document.createElement("button"); b.type = "button"; b.textContent = l; b.addEventListener("click", () => { $("text").value = l; say(l); }); $("lines").appendChild(b); }
+  $("speak").addEventListener("click", () => say($("text").value));
+  $("stop").addEventListener("click", () => speechSynthesis.cancel());
+</script>
+</body>
+</html>
