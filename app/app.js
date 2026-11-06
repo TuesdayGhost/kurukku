@@ -78,6 +78,8 @@ async function boot() {
   sb.auth.onAuthStateChange((_event, session) => {
     const before = state.session?.user?.id;
     state.session = session;
+    // ログアウト・別のアカウントでのログイン：前の家のデータを画面にも手元にも残さない（11/6 外部レビュー）
+    if (before !== session?.user?.id) { resetHouseholdState(); }
     // この中で Supabase を直接呼ぶと固まることがあるため、次の順番で呼ぶ
     if (before !== session?.user?.id) setTimeout(loadMember, 0);
   });
@@ -95,11 +97,40 @@ async function boot() {
   addEventListener("pointerdown", onAnyTap, { passive: true });
 }
 
+// ログインしている人が変わるたびに1つ進める。切り替え前に始めた通信の結果は、進んだあとは使わない
+let sessionGen = 0;
+const isCurrent = (gen) => gen === sessionGen;
+
+/** 家ごとのデータを全部消す（ログアウト・アカウントの切り替え）。同じ人の一時的な通信断では呼ばない */
+function resetHouseholdState() {
+  sessionGen++;
+  clearTimeout(memberRetry);
+  stopRealtime();
+  sound.stopAll();
+  Object.assign(state, {
+    member: null, memberError: null, household: null,
+    people: [], schedules: [], exceptions: [], messages: [], members: [], invites: [],
+    lastSync: null, syncError: null, rt: "",
+    weather: null, weatherError: null, weatherAt: 0, weatherLoc: "", lastInvite: null,
+  });
+  refreshing = null;
+  loggedNotices.clear();
+  draft = freshDraft(); edit = null; msgFrom = null; renamingPerson = null; placeResults = [];
+  for (const u of rescue.urls.values()) URL.revokeObjectURL(u);
+  if (rescue.imageUrl) URL.revokeObjectURL(rescue.imageUrl);
+  Object.assign(rescue, { profile: null, clothes: [], urls: new Map(), withAddress: false, file: null, imageUrl: null, faceFile: null });
+  for (const u of notesState.urls.values()) URL.revokeObjectURL(u);
+  Object.assign(notesState, { list: [], urls: new Map() });
+  Object.assign(gz, { month: null, paper: null, list: [], photos: [], busy: false, editing: false });
+}
+
 let memberRetry = null;
 async function loadMember() {
   clearTimeout(memberRetry);
+  const gen = sessionGen;
   if (!state.session) { state.member = null; state.memberError = null; stopRealtime(); mount(); return; }
   const { data, error } = await sb.from("members").select("*").eq("user_id", state.session.user.id).maybeSingle();
+  if (!isCurrent(gen)) return;
   if (error) {
     // 通信できないときは「家に未所属」と区別し、参加画面を出さずに自動で再試行する
     // （11/6 レビュー：停電などで Wi-Fi より先に端末が起動すると、父の部屋の画面が「招待コードで参加する」のまま止まっていた）
@@ -110,7 +141,13 @@ async function loadMember() {
   }
   state.memberError = null;
   state.member = data || null;
-  if (state.member) { await refresh(); startRealtime(); }
+  if (state.member) {
+    await refresh();
+    if (!isCurrent(gen)) return;
+    // この人の家のデータをまだ一度も読めていないときは、家の画面に進まず「接続できません」で再試行する
+    if (!state.lastSync) { state.member = null; state.memberError = state.syncError || "家の情報を読めませんでした"; memberRetry = setTimeout(loadMember, 15 * 1000); mount(); return; }
+    startRealtime();
+  }
   mount();
 }
 
@@ -124,7 +161,8 @@ let refreshing = null;
 async function refresh() {
   if (!state.member) return;
   if (refreshing) return refreshing;
-  refreshing = (async () => {
+  const gen = sessionGen;
+  const mine = (async () => {
     try {
       const since = S.addDays(state.today, -1);
       const reqs = [
@@ -139,6 +177,7 @@ async function refresh() {
         reqs.push(sb.from("invites").select("*").is("used_by", null).gt("expires_at", new Date().toISOString()).order("created_at"));
       }
       const res = await Promise.all(reqs);
+      if (!isCurrent(gen)) return;   // 読み込み中にログアウト・切り替えがあった：前の家の結果は捨てる
       const bad = res.find((r) => r.error);
       if (bad) throw bad.error;
       [state.household, state.people, state.schedules, state.exceptions, state.messages] = res.slice(0, 5).map((r) => r.data);
@@ -149,14 +188,17 @@ async function refresh() {
       updateWeather();
       state.syncError = null;
     } catch (e) {
+      if (!isCurrent(gen)) return;
       state.syncError = errMsg(e);
     } finally {
-      refreshing = null;
+      if (refreshing === mine) refreshing = null;
     }
+    if (!isCurrent(gen)) return;
     fill();
     tick();
   })();
-  return refreshing;
+  refreshing = mine;
+  return mine;
 }
 let refreshTimer = null;
 function refreshSoon() { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, 300); }
@@ -667,20 +709,23 @@ const CARD_FONT = '"Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-
 async function photoUrl(path) {
   if (!path) return null;
   if (rescue.urls.has(path)) return rescue.urls.get(path);
+  const gen = sessionGen;
   const { data, error } = await sb.storage.from("rescue").download(path);
-  if (error || !data) return null;
+  if (error || !data || !isCurrent(gen)) return null;
   const u = URL.createObjectURL(data);
   rescue.urls.set(path, u);
   return u;
 }
 
 async function loadRescue() {
+  const gen = sessionGen;
   const [p, c] = await Promise.all([
     sb.from("rescue_profiles").select("*").maybeSingle(),
     sb.from("rescue_clothes").select("*").order("sort_order").order("created_at"),
   ]);
   if (p.error) throw p.error;
   if (c.error) throw c.error;
+  if (!isCurrent(gen)) throw new Error("ログインが切り替わりました");
   rescue.profile = p.data || null;
   rescue.clothes = c.data || [];
   await Promise.all([rescue.profile?.face_photo_path, ...rescue.clothes.map((x) => x.photo_path)].filter(Boolean).map(photoUrl));
@@ -904,8 +949,9 @@ const notesState = { list: [], urls: new Map() };
 async function memoryUrl(path) {
   if (!path) return null;
   if (notesState.urls.has(path)) return notesState.urls.get(path);
+  const gen = sessionGen;
   const { data, error } = await sb.storage.from("memories").download(path);
-  if (error || !data) return null;
+  if (error || !data || !isCurrent(gen)) return null;
   const u = URL.createObjectURL(data);
   notesState.urls.set(path, u);
   return u;
@@ -925,7 +971,9 @@ function notesHTML() {
 }
 
 async function openNotes() {
+  const gen = sessionGen;
   const { data, error } = await sb.from("daily_notes").select("*").order("on_date", { ascending: false }).order("created_at", { ascending: false }).limit(60);
+  if (!isCurrent(gen)) return;
   if (error) { setHTML($("note-list"), `<li class="error">${esc(errMsg(error))}</li>`); return; }
   notesState.list = data || [];
   await Promise.all(notesState.list.map((n) => memoryUrl(n.photo_path)));
@@ -989,7 +1037,9 @@ function gazetteHTML() {
 }
 
 async function openGazette() {
+  const gen = sessionGen;
   const { data, error } = await sb.from("gazettes").select("*").order("month", { ascending: false });
+  if (!isCurrent(gen)) return;
   if (error) { setHTML($("gz-list"), `<li class="error">${esc(errMsg(error))}</li>`); return; }
   gz.list = data || [];
   if (state.view !== "gazette") return;
@@ -1012,8 +1062,12 @@ async function showPaper(g) {
   gz.paper = g;
   gz.month = g.month.slice(0, 7);
   if ($("gz-month")) $("gz-month").value = gz.month;
-  gz.photos = (await monthPhotos(gz.month)).filter((p) => p.photo_path);
-  if (!g.photo_path && gz.photos.length) g.photo_path = gz.photos[gz.photos.length - 1].photo_path;
+  const gen = sessionGen;
+  const photos = (await monthPhotos(gz.month)).filter((p) => p.photo_path);
+  if (!isCurrent(gen)) return;
+  gz.photos = photos;
+  // 写真の自動選択は、まだ発行していない下書きだけ。発行済みで「写真なし」を選んだ紙面には足さない（11/6 外部レビュー）
+  if (!g.issued_on && !g.photo_path && gz.photos.length) g.photo_path = gz.photos[gz.photos.length - 1].photo_path;
   await Promise.all(gz.photos.map((p) => memoryUrl(p.photo_path)));
   renderPaper();
 }
@@ -1070,8 +1124,10 @@ async function makeGazette(overwrite = false) {
   const btn = $("gz-make");
   btn.disabled = true;
   $("gz-status").textContent = `${pigeonName() || "鳩"}が記事を書いています…（1分ほどかかることがあります）`;
+  const gen = sessionGen;
   try {
     const { data, error } = await sb.functions.invoke("gazette", { body: { month, overwrite } });
+    if (!isCurrent(gen)) return;
     if (error) {
       let msg = error.message;
       try { const j = await error.context.json(); if (j?.error) msg = j.error; } catch (_) { /* そのまま */ }
