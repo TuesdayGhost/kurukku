@@ -13,7 +13,9 @@ const ff = (args) => execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...args
 const probe = (f) => Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]).toString().trim());
 const find = (stem) => { const files = fs.readdirSync(srcDir).filter((f) => f.startsWith(stem)).sort(); return files.length ? path.join(srcDir, files[0]) : null; };
 const resolveSrc = (s) => s.startsWith("insert:") ? path.join(repo, "tools/demo-video/out/inserts", s.slice(7) + ".mp4") : s.startsWith("docs/") ? path.join(repo, s) : find(s) || find(s.replace(/\.\w+$/, ""));
-const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=${bg},fps=${fps},format=yuv420p,setsar=1`;
+// 映像は上の 1920×900 に収め、下の 180px は字幕の帯（映像と字幕が重ならないように）
+const BAND = 180;
+const vf = `scale=${W}:${H - BAND}:force_original_aspect_ratio=decrease,pad=${W}:${H - BAND}:(ow-iw)/2:(oh-ih)/2:color=${bg},pad=${W}:${H}:0:0:color=0x14181c,fps=${fps},format=yuv420p,setsar=1`;
 
 // 1. 区間ごとに同じ形（1920x1080・30fps・音あり）の中間ファイルにする
 const parts = []; let t = 0; const subs = []; const voices = []; const missing = [];
@@ -50,7 +52,7 @@ ff(["-f", "concat", "-safe", "0", "-i", path.join(work, "list.txt"), "-c", "copy
 const ts = (x) => { const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60), s = (x % 60).toFixed(2).padStart(5, "0"); return `${h}:${String(m).padStart(2, "0")}:${s}`; };
 const ass = [`[Script Info]`, `ScriptType: v4.00+`, `PlayResX: ${W}`, `PlayResY: ${H}`, `WrapStyle: 2`, ``, `[V4+ Styles]`,
   `Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding`,
-  `Style: Sub,Zen Kaku Gothic New,52,&H00FFFFFF,&H00FFFFFF,&H00141414,&H80141414,-1,0,0,0,100,100,0,0,3,10,0,2,80,80,48,1`, ``, `[Events]`, `Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`,
+  `Style: Sub,Zen Kaku Gothic New,46,&H00FFFFFF,&H00FFFFFF,&H00141414,&H00141414,-1,0,0,0,100,100,0,0,1,0,0,2,80,80,34,1`, ``, `[Events]`, `Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`,
   ...subs.map(([a, b, text]) => `Dialogue: 0,${ts(a)},${ts(b)},Sub,,0,0,0,,${text.replace(/\n/g, "\\N")}`)].join("\n");
 const assFile = path.join(work, "subs.ass"); fs.writeFileSync(assFile, ass);
 fs.writeFileSync(outFile.replace(/\.mp4$/, ".srt"), subs.map(([a, b, text], i) => `${i + 1}\n${ts(a).replace(".", ",")}0 --> ${ts(b).replace(".", ",")}0\n${text}\n`).join("\n"));
