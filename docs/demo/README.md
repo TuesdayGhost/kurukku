@@ -24,4 +24,4 @@
 
 ## 録音用原稿（台本 v0.3）
 
-- `narration-script.pdf`：葵依さんが話すところ（N1〜N7）を録る順に並べた A4 の原稿。テイクの欄・文字数・参考に鳩のセリフと流れつき
+- `narration-script.pdf`：葵依さんが話すところ（N1〜N8）を録る順に並べた A4 の原稿。テイクの欄・文字数・参考に鳩のセリフと流れつき。11/6 に N2 を葵依の文に差し替え、締めの N8 を追加（元は `tools/demo-video/narration-script.html`）
