@@ -24,15 +24,16 @@ for (const [i, s] of E.segments.entries()) {
   if (!src || !fs.existsSync(src)) { missing.push(s.src); }
   const isImage = src && /\.(png|jpg|jpeg)$/i.test(src);
   if (!src || !fs.existsSync(src)) {
-    ff(["-f", "lavfi", "-i", `color=c=${bg}:s=${W}x${H}:r=${fps}`, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-shortest", out]);
+    ff(["-f", "lavfi", "-i", `color=c=${bg}:s=${W}x${H}:r=${fps}`, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", out]);
   } else if (isImage) {
-    ff(["-loop", "1", "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-shortest", out]);
+    ff(["-loop", "1", "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", out]);
   } else {
-    const args = ["-ss", String(s.in || 0), "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-ar", "48000"];
-    args.push("-map", "0:v:0", "-map", s.keepAudio ? "0:a:0?" : "1:a:0", "-shortest", out);
-    ff(args);
-    // 素材が短くて区間に足りないときは最後のコマで埋める
-    const d = probe(out); if (d < s.dur - 0.2) { const pad = path.join(work, `pad${i}.mp4`); ff(["-i", out, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-vf", `tpad=stop_mode=clone:stop_duration=${s.dur - d}`, "-t", String(s.dur), "-map", "0:v", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", pad]); fs.renameSync(pad, out); }
+    // 音は必ず区間の長さぴったりにそろえる（素材の音が短くても長くても、無音で埋める／切る）
+    const hasAudio = execFileSync("ffprobe", ["-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", src]).toString().includes("audio");
+    const useSrcAudio = s.keepAudio && hasAudio;
+    const fc = `[0:v]${vf},tpad=stop_mode=clone:stop_duration=${s.dur},trim=0:${s.dur},setpts=PTS-STARTPTS[v];` +
+      (useSrcAudio ? `[0:a]aformat=sample_rates=48000:channel_layouts=stereo,apad,atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]` : `[1:a]atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]`);
+    ff(["-ss", String(s.in || 0), "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-ar", "48000", out]);
   }
   parts.push(out);
   for (const [a, b, text] of s.subs || []) subs.push([t + a, t + Math.min(b, s.dur), text]);
@@ -62,4 +63,5 @@ const inputs = ["-i", joined]; const chains = []; const mix = ["[0:a]"];
 voices.forEach(([f, at], i) => { inputs.push("-i", f); chains.push(`[${i + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,adelay=${Math.round(at * 1000)}|${Math.round(at * 1000)}[v${i}]`); mix.push(`[v${i}]`); });
 const fc = [...chains, `${mix.join("")}amix=inputs=${mix.length}:duration=first:normalize=0[a]`, `[0:v]ass='${assFile.replace(/'/g, "\\'")}'[v]`].join(";");
 ff([...inputs, "-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", outFile]);
-console.log("→", outFile, `${(fs.statSync(outFile).size / 1e6).toFixed(1)}MB`);
+const ad = execFileSync("ffprobe", ["-v", "error", "-select_streams", "a", "-show_entries", "stream=duration", "-of", "csv=p=0", outFile]).toString().trim();
+console.log("→", outFile, `${(fs.statSync(outFile).size / 1e6).toFixed(1)}MB  映像 ${t}s / 音 ${Number(ad).toFixed(1)}s`);
