@@ -78,6 +78,7 @@
 - お知らせの音（鳩時計・振り子時計）：企画者が Python で作成。出典は [app/sounds/README.md](app/sounds/README.md)
 - ロゴ・鳩：企画者が Claude と作成（[docs/brand.md](docs/brand.md)）
 - デモ用のレスキューカードの顔と服の画像（架空の人物「豆田鳩蔵」）：企画者が Google Flow で作成（利用規約を確認済み）。アプリの保存場所（デモ用の家）にだけ置き、このリポジトリには入れていない
+- デモ動画の BGM・効果音（鳩月報のファンファーレなど）：Claude がコードで合成（Python・ffmpeg で倍音つきの正弦波にエンベロープを掛けたもの）。既存の楽曲やフリー素材は使っていない。サムネイルも、架空のデータのアプリ画面から Claude が作成（`tools/demo-video/inserts/thumb.html`）
 - 天気：[Open-Meteo.com](https://open-meteo.com/)（CC BY 4.0）
 - データ・ログイン・同期：[Supabase](https://supabase.com/)（supabase-js v2.45.4、MIT License）
 - 書体：Zen Kaku Gothic New（Google Fonts、SIL Open Font License）
