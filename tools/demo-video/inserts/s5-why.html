@@ -9,7 +9,9 @@
   .say { position:absolute; left:1040px; top:200px; width:800px; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:60px; line-height:1.5; opacity:0; }
   .h { position:absolute; left:1040px; top:520px; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:150px; font-weight:700; opacity:0; white-space:nowrap; }
   .h .q { color:#ff5a6e; display:inline-block; transform-origin:50% 60%; }
+  .intro { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:92px; opacity:0; letter-spacing:.06em; }
 </style></head><body>
+<div class="intro" id="intro">もし、帰ってこなかったら。</div>
 <div class="sheet" id="sheet"><div class="line" style="top:140px"></div><div class="line" style="top:300px"></div><div class="line" style="top:460px"></div><div class="line" style="top:620px"></div><div class="line" style="top:780px"></div></div>
 <div class="print" id="print"><div class="ph">デイサービスの<br>行事写真<br>（プリント）</div><div class="cap">手元にあった、1枚</div></div>
 <div class="say" id="say">手元の写真は、<br>デイのプリント1枚。</div>
@@ -18,6 +20,7 @@
   window.DURATION = 16.8;
   const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
   window.render = (t) => {
+    $("intro").style.opacity = String(ease((t - 0.5) / 0.8) * (1 - ease((t - 4.6) / 0.6)));
     const a = ease((t - 5.2) / 0.9); $("sheet").style.opacity = String(a); $("sheet").style.transform = `translateY(${(1 - a) * 40}px)`;          // 「まとめたものを作ろう」→ 白い用紙
     const b = ease((t - 9.5) / 0.6); $("print").style.opacity = String(b); $("print").style.transform = `rotate(${-7 - (1 - b) * 10}deg) translateY(${(1 - b) * -120}px)`;  // 「でも手元の写真は」→ プリント1枚が落ちてくる
     $("say").style.opacity = String(ease((t - 12.6) / 0.6));                                                                                      // 「デイのプリントだけ」

@@ -11,10 +11,15 @@
   mark { background:linear-gradient(transparent 38%, #ffe66d 38%); color:inherit; background-repeat:no-repeat; background-size:0% 100%; }
   mark.on { background-size:100% 100%; transition:background-size .7s ease-out; }
   .foot { position:absolute; left:80px; bottom:50px; font-size:30px; color:var(--muted); }
+  .pair { transform:none; }
+  .note { transform:rotate(-1.5deg) scale(.82); }
+  .art h3 { font-size:56px; }
+  .boom { position:absolute; right:150px; top:70px; width:260px; height:260px; display:grid; place-items:center; color:#fff; font-size:54px; font-weight:700; background:var(--red); clip-path:polygon(50% 0,61% 20%,82% 8%,80% 30%,100% 38%,84% 52%,98% 72%,76% 72%,72% 96%,54% 80%,36% 100%,30% 78%,8% 84%,18% 62%,0 50%,18% 36%,6% 14%,30% 20%,38% 2%); transform:rotate(12deg) scale(0); }
 </style></head><body>
-<div class="t">こんな出来事が、こんな記事に</div>
+<div class="t">ひとことのメモが、スポーツ新聞みたいな記事に</div>
 <div class="pair" id="p1"><div class="note"><small>10月11日のひとこと</small><p><mark id="m1">デイで芋煮会</mark>。</p></div><div class="arrow">→</div><div class="art"><h3>お父さん書道で魅せた</h3><p>28日、お父さんがデイで書道を得意そうに披露！<mark id="a1">11日はデイで芋煮会</mark>、12日は夕飯の秋刀魚を「とてもおいしかった」と大絶賛。秋の味覚と芸術を満喫した10月だ。</p></div></div>
 <div class="pair" id="p2"><div class="note"><small>10月20日のひとこと</small><p>お父さん、<mark id="m2">お菓子がないとご立腹</mark>。</p></div><div class="arrow">→</div><div class="art"><h3>お菓子問題が勃発</h3><p>20日、<mark id="a2">お父さんが「お菓子がない」とご立腹</mark>。台所の補給線に穴があいた格好だ。お母さんの買い物は今月予定4回、次の補給に注目が集まる。</p></div></div>
+<div class="boom" id="boom">大げさ！</div>
 <div class="foot">記事は 2026年10月号から、実際に生成された文章のまま</div>
 <script>
   window.DURATION = 11.0;
@@ -24,6 +29,8 @@
     const a2 = ease((t - 5.4) / 0.5); $("p2").style.opacity = String(a2);
     $("m1").classList.toggle("on", t >= 1.3); $("a1").classList.toggle("on", t >= 1.3);
     $("m2").classList.toggle("on", t >= 6.4); $("a2").classList.toggle("on", t >= 6.4);
+    const b1 = ease((t - 2.4) / 0.3) * (1 - ease((t - 5.0) / 0.3)), b2 = ease((t - 7.6) / 0.3); const bb = Math.max(b1, b2);
+    $("boom").style.transform = `rotate(${12 - 8 * bb}deg) scale(${bb * (1 + 0.08 * Math.sin(t * 9))})`;
   };
   window.render(0); window.ready = true;
 </script></body></html>
