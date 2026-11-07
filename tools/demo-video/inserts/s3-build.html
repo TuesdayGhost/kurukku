@@ -1,0 +1,39 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .board { position:absolute; inset:0; background:url(/tools/demo-video/out/crops/board-last.png) center/cover; }
+  .erase { position:absolute; inset:0; background:var(--bg); opacity:0; }
+  .word { position:absolute; font-family:"IPAMincho","IPAPMincho",serif; font-size:60px; color:#2b3a8a; opacity:0; white-space:nowrap; text-shadow:0 2px 0 #fff; }
+  .screen { position:absolute; left:128px; top:20px; width:1664px; height:1040px; background:var(--bg); border-radius:28px; box-shadow:0 14px 50px rgb(0 0 0 / .18); opacity:0; overflow:hidden; }
+  .blk { position:absolute; opacity:0; transform:translateY(22px); }
+  .blk img { display:block; width:100%; }
+</style></head><body>
+<div class="board" id="board"></div><div class="erase" id="erase"></div>
+<div class="word" id="w1" style="left:300px; top:230px">11月7日（土）　雨　10度</div>
+<div class="word" id="w2" style="left:340px; top:330px">お父さん　9時　デイサービス</div>
+<div class="word" id="w3" style="left:340px; top:430px">お母さん　9時30分　買物</div>
+<div class="word" id="w4" style="left:340px; top:530px">はと子　12時30分〜仕事</div>
+<div class="screen" id="screen"></div>
+<script>
+  // 部品は shots-1107.mjs が撮った実際の画面の切り出し。位置は boxes.json（1280×800 基準）を 1.3 倍
+  const K = 1.3; window.DURATION = 14.0;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  const $ = (id) => document.getElementById(id);
+  fetch("/tools/demo-video/out/ui/boxes.json").then((r) => r.json()).then((B) => {
+    const scr = $("screen");
+    for (const name of ["greet", "date", "wday", "weather", "clock", "plan-dad", "plan-mom", "plan-me", "pigeon"]) {
+      const b = B[name]; const d = document.createElement("div"); d.className = "blk"; d.id = "b-" + name;
+      d.style.left = `${b.x * K}px`; d.style.top = `${b.y * K}px`; d.style.width = `${b.width * K}px`;
+      d.innerHTML = `<img src="/tools/demo-video/out/ui/${name}.png">`; scr.append(d);
+    }
+    window.ready = true; window.render(0);
+  });
+  // 「そんな暮らしの中にも…作りました」(0〜7s) で板の文字が消え、言葉が浮かぶ。鳩A (7.3〜) で「日付も」「天気も」「予定も」の順に画面が組み上がる
+  const T = { "greet": 8.2, "date": 8.4, "wday": 8.6, "weather": 9.4, "plan-dad": 10.3, "plan-mom": 10.7, "plan-me": 11.1, "clock": 11.9, "pigeon": 12.3 };
+  window.render = (t) => {
+    $("erase").style.opacity = String(ease((t - 1.0) / 2.5) * 0.92);
+    $("board").style.filter = `blur(${ease((t - 1.0) / 2.5) * 6}px)`;
+    [["w1", 2.4], ["w2", 3.1], ["w3", 3.8], ["w4", 4.5]].forEach(([id, t0]) => { const u = ease((t - t0) / 0.6); const out = 1 - ease((t - 7.2) / 0.6); const e = $(id); e.style.opacity = String(u * out); e.style.transform = `translateY(${(1 - u) * 20 - ease((t - 7.2) / 0.6) * 40}px)`; });
+    $("screen").style.opacity = String(ease((t - 7.4) / 0.6));
+    for (const [name, t0] of Object.entries(T)) { const e = $("b-" + name); if (!e) continue; const u = ease((t - t0) / 0.45); e.style.opacity = String(u); e.style.transform = `translateY(${(1 - u) * 22}px)`; }
+  };
+</script></body></html>

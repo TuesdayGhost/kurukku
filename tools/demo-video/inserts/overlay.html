@@ -1,0 +1,60 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<style>
+  html,body { margin:0; overflow:hidden; background:transparent; font-family:"Zen Kaku Gothic New","IPAPGothic","IPAGothic",sans-serif; }
+  .mincho { font-family:"IPAMincho","IPAPMincho","Zen Old Mincho",serif; }
+  /* 鳩の吹き出し：しっぽ付き、深緑の輪郭、控えめな影 */
+  .row { position:absolute; right:0; bottom:0; display:flex; align-items:flex-end; gap:18px; }
+  .bubble { position:relative; background:#fff; border:4px solid #2f5d50; border-radius:26px; padding:18px 30px; font-size:40px; font-weight:700; color:#14181c; line-height:1.45; max-width:1000px; box-shadow:0 10px 26px rgb(20 24 28 / .18); transform-origin:100% 100%; margin-bottom:46px; }
+  .bubble:after { content:""; position:absolute; right:-26px; bottom:22px; width:0; height:0; border-left:30px solid #2f5d50; border-top:14px solid transparent; border-bottom:14px solid transparent; }
+  .bubble:before { content:""; position:absolute; right:-18px; bottom:26px; width:0; height:0; border-left:24px solid #fff; border-top:10px solid transparent; border-bottom:10px solid transparent; z-index:1; }
+  .pigeon { width:170px; height:170px; border-radius:50%; background:#fff; border:4px solid #c9d1d8; display:grid; place-items:center; color:#2f5d50; --pigeon-bg:#fff; transform-origin:50% 100%; box-shadow:0 8px 20px rgb(20 24 28 / .15); }
+  .pigeon svg { width:68%; height:auto; transform:scaleX(-1); }
+  /* 大きな言葉 */
+  .cap { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:0 80px; box-sizing:border-box; }
+  .cap .t { font-weight:700; color:#14181c; line-height:1.35; letter-spacing:.06em; text-shadow:0 2px 0 rgb(255 255 255 / .6); }
+  .cap .s { margin-top:18px; font-size:30px; color:#434c55; letter-spacing:.15em; }
+  .cap.light .t { color:#e9edf1; text-shadow:0 2px 14px rgb(0 0 0 / .4); } .cap.light .s { color:#c8d1cc; }
+  .cap.left { place-items:start; text-align:left; }
+  .pill { position:absolute; left:0; top:0; background:rgb(47 93 80 / .92); color:#fff; font-size:30px; font-weight:700; padding:8px 24px; border-radius:999px; box-shadow:0 6px 16px rgb(0 0 0 / .18); }
+</style></head><body>
+<script>
+  const q = new URLSearchParams(location.search); const kind = q.get("kind") || "caption"; const text = q.get("text") || ""; const dur = Number(q.get("dur") || 4); window.DURATION = dur;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  const fadeIn = Number(q.get("in") || 0.4), fadeOut = Number(q.get("out") || 0.4);
+  if (kind === "bubble") {
+    // 長い文は「。」で分け、発話に合わせて順に出す（seg=秒の区切りを "0,3.2,5" のように渡せる）
+    const parts = text.split(/(?<=。|！|？)/).filter(Boolean); const segs = (q.get("seg") || "").split(",").filter(Boolean).map(Number);
+    document.body.innerHTML = `<div class="row"><div class="bubble" id="b"></div><div class="pigeon" id="p"><svg viewBox="36 60 186 146"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg></div></div>`;
+    window.render = (t) => {
+      const u = clamp(t / 0.45); const bounce = u < 1 ? 1.12 * Math.sin(u * Math.PI / 2) * (1 - 0.12 * u) : 1; const out = 1 - clamp((t - (dur - 0.3)) / 0.3);
+      let idx = 0; if (segs.length) { for (let i = 0; i < segs.length; i++) if (t >= segs[i]) idx = i; } else idx = Math.min(parts.length - 1, Math.floor(t / (dur / parts.length)));
+      const b = document.getElementById("b"), p = document.getElementById("p");
+      b.textContent = parts.length ? parts[Math.min(idx, parts.length - 1)] : text;
+      p.style.transform = `scale(${Math.min(bounce, 1.08)}) translateY(${-12 * Math.sin(clamp(t / 0.5) * Math.PI)}px)`; p.style.opacity = String(out);
+      b.style.transform = `scale(${t < 0.15 ? 0 : bounce})`; b.style.opacity = String(out);
+    };
+  } else if (kind === "fly") {
+    // 鳩が封筒を持って (x0,y0)→(x1,y1) を放物線で飛ぶ。座標はこの重ねの中の px
+    const x0 = Number(q.get("x0")), y0 = Number(q.get("y0")), x1 = Number(q.get("x1")), y1 = Number(q.get("y1")); const flyDur = Number(q.get("fly") || dur);
+    document.body.innerHTML = `<div id="f" style="position:absolute;left:0;top:0;width:190px;height:150px"><svg viewBox="36 60 186 146" style="width:190px;height:150px;color:#2f5d50;--pigeon-bg:#e9edf1" id="pg"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg><div style="position:absolute;left:60px;top:104px;width:64px;height:48px;background:#fff;border:3px solid #5a4670;border-radius:8px;box-shadow:0 4px 12px rgb(0 0 0 / .25)"><div style="position:absolute;left:0;right:0;top:0;height:0;border-top:22px solid #5a4670;border-left:29px solid transparent;border-right:29px solid transparent;opacity:.85"></div></div></div>`;
+    window.render = (t) => {
+      const u = ease(t / flyDur); const cx = (x0 + x1) / 2, cy = Math.min(y0, y1) - 320;
+      const bz = (s) => [(1 - s) ** 2 * x0 + 2 * (1 - s) * s * cx + s * s * x1, (1 - s) ** 2 * y0 + 2 * (1 - s) * s * cy + s * s * y1];
+      const [x, y] = bz(u), [x2, y2] = bz(Math.min(1, u + 0.01)); const ang = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI;
+      const e = document.getElementById("f"); e.style.transform = `translate(${x - 95}px, ${y - 75}px)`; e.style.opacity = String((t < 0.2 ? t / 0.2 : 1) * (1 - clamp((t - (dur - 0.4)) / 0.4)));
+      document.getElementById("pg").style.transform = `rotate(${ang * 0.5 + Math.sin(t * 22) * 6}deg)`;
+    };
+  } else if (kind === "pill") {
+    document.body.innerHTML = `<div class="pill" id="x">${text}</div>`;
+    window.render = (t) => { const e = document.getElementById("x"); e.style.opacity = String(ease(t / fadeIn) * (1 - ease((t - (dur - fadeOut)) / fadeOut))); };
+  } else {
+    const size = Number(q.get("size") || 88); const sub = q.get("sub") || ""; const cls = ["cap", q.get("font") === "mincho" ? "mincho" : "", q.get("light") ? "light" : "", q.get("align") === "left" ? "left" : ""].join(" ");
+    document.body.innerHTML = `<div class="${cls}"><div id="x"><div class="t" style="font-size:${size}px">${text.replace(/\\n/g, "<br>")}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div></div>`;
+    window.render = (t) => { const e = document.getElementById("x"); const a = ease(t / fadeIn) * (1 - ease((t - (dur - fadeOut)) / fadeOut)); e.style.opacity = String(a); e.style.transform = `translateY(${(1 - ease(t / fadeIn)) * 18}px)`; };
+  }
+  window.render(0); window.ready = true;
+</script></body></html>

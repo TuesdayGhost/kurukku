@@ -1,0 +1,32 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .btnwrap { position:absolute; inset:0; display:grid; place-items:center; }
+  .btnimg { width:1500px; border-radius:16px; box-shadow:0 10px 40px rgb(0 0 0 / .18); transform-origin:78% 50%; }
+  .card { position:absolute; left:50%; top:50%; width:1080px; height:1914px; margin-left:-540px; margin-top:-957px; transform-origin:50% 50%; opacity:0; box-shadow:0 20px 60px rgb(0 0 0 / .25); background:#fff; }
+  .card img { width:1080px; height:1914px; display:block; }
+  .ring { position:absolute; border:10px solid var(--red); border-radius:16px; opacity:0; }
+  .tag { position:absolute; left:60px; bottom:60px; background:var(--red); color:#fff; font-size:48px; font-weight:700; padding:10px 32px; border-radius:12px; opacity:0; }
+</style></head><body>
+<div class="btnwrap" id="bw"><img class="btnimg" id="btn" src="/tools/demo-video/out/crops/rc-button.png"></div>
+<div class="card" id="card"><img src="/tools/demo-video/out/ui/card.jpg">
+  <div class="ring" id="r1" style="left:70px;top:250px;width:480px;height:560px"></div>
+  <div class="ring" id="r2" style="left:580px;top:330px;width:460px;height:420px"></div>
+  <div class="ring" id="r3" style="left:30px;top:1270px;width:1020px;height:600px"></div>
+</div>
+<div class="tag" id="tag"></div>
+<script>
+  window.DURATION = 11.4;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
+  // 1080×1914 のカード上の注目点（中心）と倍率
+  const views = [[3.9, 540, 957, 1040 / 1914], [6.2, 310, 530, 1.4], [7.7, 810, 540, 1.6], [9.1, 540, 1570, 1.0]];
+  const tags = [[6.2, 7.6, "最近の顔写真", "r1"], [7.7, 9.0, "身長・体重（約＋測った月）", "r2"], [9.1, 11.4, "よく着る服", "r3"]];
+  window.render = (t) => {
+    const z = 1 + 0.9 * ease((t - 0.4) / 2.6); $("btn").style.transform = `scale(${z})`; $("bw").style.opacity = String(1 - ease((t - 3.5) / 0.4));   // 「いつも一番上のこのボタンに」
+    let cx = views[0][1], cy = views[0][2], s = views[0][3];
+    for (let i = 1; i < views.length; i++) { const u = ease((t - views[i][0]) / 1.0); cx += (views[i][1] - cx) * u; cy += (views[i][2] - cy) * u; s += (views[i][3] - s) * u; }
+    const c = $("card"); c.style.opacity = String(ease((t - 3.6) / 0.5)); c.style.transform = `translate(${(540 - cx) * s}px, ${(957 - cy) * s}px) scale(${s})`;
+    let label = ""; for (const [t0, t1, txt, r] of tags) { const u = ease((t - t0) / 0.35) * (1 - ease((t - t1) / 0.3)); $(r).style.opacity = String(u); if (u > 0.5) label = txt; }
+    $("tag").textContent = label; $("tag").style.opacity = label ? "1" : "0";
+  };
+  const im = document.querySelector(".card img"); if (im.complete) window.ready = true; else im.onload = () => { window.ready = true; }; window.render(0);
+</script></body></html>

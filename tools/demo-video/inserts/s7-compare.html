@@ -1,0 +1,27 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  html,body { background:#1f2a24; }
+  .panel { position:absolute; top:150px; width:922px; height:576px; border-radius:14px; overflow:hidden; box-shadow:0 12px 50px rgb(0 0 0 / .45); }
+  .panel img { width:1280px; height:800px; transform:scale(0.72); transform-origin:0 0; display:block; }
+  .tag { position:absolute; top:60px; font-size:44px; font-weight:700; color:#fff; }
+  .ring { position:absolute; border:8px solid #ff5a6e; border-radius:14px; opacity:0; box-shadow:0 0 0 6px rgb(0 0 0 / .2); }
+  .dim { position:absolute; inset:0; background:rgb(0 0 0 / .45); opacity:0; }
+  .label { position:absolute; left:0; right:0; top:790px; text-align:center; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:76px; opacity:0; }
+  .sub { position:absolute; left:0; right:0; top:910px; text-align:center; color:#c8d1cc; font-size:34px; opacity:0; }
+</style></head><body>
+<div class="tag" style="left:30px">見直す前</div><div class="tag" style="left:988px">見直した後</div>
+<div class="panel" style="left:20px"><img src="/docs/demo/skill-before.png"><div class="dim" id="d1"></div><div class="ring" id="rb" style="left:410px;top:8px;width:500px;height:500px"></div></div>
+<div class="panel" style="left:978px"><img src="/docs/demo/skill-after.png"><div class="dim" id="d2"></div><div class="ring" id="ra1" style="left:0px;top:340px;width:380px;height:130px"></div><div class="ring" id="ra2" style="left:410px;top:8px;width:500px;height:360px"></div></div>
+<div class="label" id="l1">文字を、大きく。</div><div class="sub" id="s1">時刻を本人の画面で最も大きく。「午前／午後」を添える</div>
+<div class="label" id="l2">情報を、減らす。</div><div class="sub" id="s2">ごはん・薬・終わった予定は出さず、これからの予定だけ</div>
+<script>
+  window.DURATION = 4.8;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
+  window.render = (t) => {
+    const a = ease((t - 0.4) / 0.4) * (1 - ease((t - 2.2) / 0.3)); const b = ease((t - 2.3) / 0.4);
+    $("ra1").style.opacity = String(a); $("l1").style.opacity = String(a); $("s1").style.opacity = String(a);
+    $("rb").style.opacity = String(b); $("ra2").style.opacity = String(b); $("l2").style.opacity = String(b); $("s2").style.opacity = String(b);
+    $("d1").style.opacity = String(a); $("d2").style.opacity = "0";
+  };
+  const ims = [...document.querySelectorAll("img")]; let n = 0; const ok = () => { if (++n >= ims.length) window.ready = true; }; ims.forEach((im) => im.complete ? ok() : (im.onload = ok)); window.render(0);
+</script></body></html>

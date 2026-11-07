@@ -1,0 +1,549 @@
+{
+ "comment": "全面再構築版（11/7 改訂指示書）。帯なし。場面1〜3を新しく、4以降は作業中の仮置き（cut3 の素材をそのまま）",
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "bg": "#e9edf1",
+ "crossfade": 0.5,
+ "bgmVolume": 0.14,
+ "segments": [
+  {
+   "name": "1 繰り返される質問 → くるっくー（N1）",
+   "src": "insert:s1-questions",
+   "fit": "cover",
+   "dur": 11.5,
+   "xf": 0.8,
+   "voice": [
+    [
+     "N1",
+     0.6
+    ]
+   ]
+  },
+  {
+   "name": "2 毎朝のホワイトボード（N2 前半）",
+   "src": "V02_bord.MOV",
+   "in": 0,
+   "fit": "cover",
+   "dur": 23.6,
+   "xf": 1.0,
+   "voice": [
+    [
+     "N2",
+     0.3
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "caption",
+     "text": "毎朝 3〜4分",
+     "font": "mincho",
+     "size": 96,
+     "align": "left",
+     "at": 2.6,
+     "dur": 21,
+     "x": 80,
+     "y": 60,
+     "w": 900,
+     "h": 260,
+     "in": 0.6,
+     "out": 0.5
+    },
+    {
+     "kind": "caption",
+     "text": "× 365日",
+     "font": "mincho",
+     "size": 96,
+     "align": "left",
+     "at": 6.6,
+     "dur": 17,
+     "x": 80,
+     "y": 230,
+     "w": 900,
+     "h": 260,
+     "in": 0.6,
+     "out": 0.5
+    },
+    {
+     "kind": "caption",
+     "text": "1年で 約20時間",
+     "sub": "毎朝の更新作業の概算",
+     "font": "mincho",
+     "size": 110,
+     "align": "left",
+     "at": 11.0,
+     "dur": 12.6,
+     "x": 80,
+     "y": 400,
+     "w": 1000,
+     "h": 320,
+     "in": 0.6,
+     "out": 0.5
+    }
+   ]
+  },
+  {
+   "name": "3 手書きが画面になる（N2 後半 → 鳩A）",
+   "src": "insert:s3-build",
+   "fit": "cover",
+   "dur": 14.2,
+   "xf": 0.6,
+   "voice": [
+    [
+     "HATO_A",
+     7.4
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "bubble",
+     "text": "いまは、日付も天気も予定も、ここに出しておきます。何度でも、今日を確かめられます。",
+     "seg": "0,4.2",
+     "at": 7.3,
+     "dur": 7.2,
+     "x": 760,
+     "y": 820,
+     "w": 1120,
+     "h": 260
+    }
+   ]
+  },
+  {
+   "name": "3b 机の上の実機",
+   "src": "V03_morning.MOV",
+   "in": 0.5,
+   "fit": "cover",
+   "dur": 4.5,
+   "zoom": {
+    "to": 1.12,
+    "cx": 0.45,
+    "cy": 0.45
+   }
+  },
+  {
+   "name": "4a 家族が送る → 鳩が運ぶ → 本人が見る",
+   "dur": 24,
+   "xf": 0.6,
+   "bg": "#e9edf1",
+   "layers": [
+    {
+     "src": "V04b_phone.mp4",
+     "in": 9,
+     "fit": "contain",
+     "box": {
+      "x": 120,
+      "y": 80,
+      "w": 480,
+      "h": 920
+     }
+    },
+    {
+     "src": "V04b_received.MOV",
+     "in": 0,
+     "fit": "cover",
+     "box": {
+      "x": 720,
+      "y": 150,
+      "w": 1120,
+      "h": 630
+     },
+     "at": 4.0,
+     "keepAudio": true,
+     "gain": 10
+    }
+   ],
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "家族が送る（スマホ）",
+     "at": 0.4,
+     "dur": 23.2,
+     "x": 150,
+     "y": 16,
+     "w": 600,
+     "h": 80
+    },
+    {
+     "kind": "pill",
+     "text": "本人が見る（居間のパソコン）",
+     "at": 4.4,
+     "dur": 19.2,
+     "x": 1240,
+     "y": 92,
+     "w": 640,
+     "h": 80
+    },
+    {
+     "kind": "fly",
+     "x0": 560,
+     "y0": 560,
+     "x1": 1200,
+     "y1": 420,
+     "fly": 1.6,
+     "at": 10.2,
+     "dur": 2.0,
+     "x": 0,
+     "y": 0,
+     "w": 1920,
+     "h": 1080
+    },
+    {
+     "kind": "caption",
+     "text": "「銀行に行ってきます」",
+     "font": "mincho",
+     "size": 64,
+     "align": "left",
+     "at": 1.2,
+     "dur": 8.4,
+     "x": 680,
+     "y": 830,
+     "w": 1200,
+     "h": 200,
+     "in": 0.5,
+     "out": 0.4
+    },
+    {
+     "kind": "caption",
+     "text": "鳴って、読み上げる",
+     "font": "mincho",
+     "size": 64,
+     "align": "left",
+     "at": 11.8,
+     "dur": 11.6,
+     "x": 680,
+     "y": 830,
+     "w": 1200,
+     "h": 200,
+     "in": 0.5,
+     "out": 0.4
+    }
+   ]
+  },
+  {
+   "name": "4b 予定欄に残る（N3）",
+   "src": "tools/demo-video/out/ui/display-bank.png",
+   "fit": "contain",
+   "dur": 6.5,
+   "xf": 0.6,
+   "zoom": {
+    "to": 1.45,
+    "cx": 0.72,
+    "cy": 0.52
+   },
+   "voice": [
+    [
+     "N3",
+     0.6
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "あとからも、本人の予定欄で見られる",
+     "at": 1.0,
+     "dur": 5.2,
+     "x": 120,
+     "y": 60,
+     "w": 900,
+     "h": 80
+    }
+   ]
+  },
+  {
+   "name": "4c 忘れても、もう一度見れば大丈夫（鳩B）",
+   "src": "tools/demo-video/out/ui/display-bank.png",
+   "fit": "blur",
+   "dur": 8.4,
+   "xf": 0.8,
+   "voice": [
+    [
+     "HATO_B",
+     0.5
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "caption",
+     "text": "忘れても、\\nもう一度見れば大丈夫。",
+     "font": "mincho",
+     "size": 104,
+     "at": 0.3,
+     "dur": 8.0,
+     "x": 0,
+     "y": 0,
+     "w": 1920,
+     "h": 1080,
+     "in": 0.8,
+     "out": 0.6
+    }
+   ]
+  },
+  {
+   "name": "5a 実体験（N4）",
+   "src": "insert:s5-why",
+   "fit": "cover",
+   "dur": 16.8,
+   "xf": 0.8,
+   "voice": [
+    [
+     "N4",
+     0.2
+    ]
+   ]
+  },
+  {
+   "name": "5b 一番上のボタン → 実際のカード（N5）",
+   "src": "insert:s5-card",
+   "fit": "cover",
+   "dur": 11.4,
+   "xf": 0.6,
+   "voice": [
+    [
+     "N5",
+     0.2
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "※架空の人物・データです",
+     "at": 3.8,
+     "dur": 7.4,
+     "x": 1300,
+     "y": 30,
+     "w": 560,
+     "h": 72
+    }
+   ]
+  },
+  {
+   "name": "5c 画像と文字を送る → 共有",
+   "src": "V05_rescu.mp4",
+   "in": 8.0,
+   "fit": "contain",
+   "bg": "#e9edf1",
+   "dur": 6.0,
+   "xf": 0.6,
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "見せる・読み上げる・送る",
+     "at": 0.3,
+     "dur": 5.4,
+     "x": 120,
+     "y": 60,
+     "w": 700,
+     "h": 80
+    },
+    {
+     "kind": "pill",
+     "text": "※架空の人物・データです",
+     "at": 0.3,
+     "dur": 5.4,
+     "x": 1300,
+     "y": 60,
+     "w": 560,
+     "h": 72
+    }
+   ]
+  },
+  {
+   "name": "6a 日々の出来事が集まる（鳩C）",
+   "src": "insert:s6-notes",
+   "fit": "cover",
+   "dur": 7.0,
+   "xf": 0.6,
+   "voice": [
+    [
+     "HATO_C",
+     0.5
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "bubble",
+     "text": "忘れても、日々は残ります。",
+     "at": 0.4,
+     "dur": 4.5,
+     "x": 900,
+     "y": 820,
+     "w": 1000,
+     "h": 260
+    }
+   ]
+  },
+  {
+   "name": "6b 鳩が編集室へ運ぶ（N6）",
+   "src": "insert:s6-editroom",
+   "fit": "cover",
+   "dur": 8.5,
+   "xf": 0.6,
+   "voice": [
+    [
+     "N6",
+     0.3
+    ]
+   ]
+  },
+  {
+   "name": "6c 鳩・月・報！ → 紙面",
+   "src": "insert:s6-paper",
+   "fit": "cover",
+   "dur": 11.0,
+   "xf": 0.5
+  },
+  {
+   "name": "6d こんな出来事が、こんな記事に",
+   "src": "insert:s6-compare",
+   "fit": "cover",
+   "dur": 11.0,
+   "xf": 0.6
+  },
+  {
+   "name": "7a Claude Code と仕様書（N7）",
+   "src": "V071_claude.mp4",
+   "in": 0.3,
+   "fit": "contain",
+   "dur": 9.0,
+   "xf": 0.8,
+   "voice": [
+    [
+     "N7",
+     0.3
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "Claude Code の作業画面（実際の記録）",
+     "at": 0.6,
+     "dur": 8.0,
+     "x": 120,
+     "y": 60,
+     "w": 900,
+     "h": 80
+    },
+    {
+     "kind": "pill",
+     "text": "仕様書：docs/　インタビューの実体験も仕様に",
+     "at": 5.8,
+     "dur": 2.9,
+     "x": 120,
+     "y": 160,
+     "w": 1000,
+     "h": 80
+    }
+   ],
+   "bg": "#1f2a24"
+  },
+  {
+   "name": "7b 自作 Skill（規格を根拠に）",
+   "src": "V072_claude.mp4",
+   "in": 1.0,
+   "fit": "contain",
+   "dur": 5.1,
+   "xf": 0.6,
+   "speed": 1.5,
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "自作 Skill：kurukku-ui-review",
+     "at": 0.3,
+     "dur": 4.6,
+     "x": 120,
+     "y": 60,
+     "w": 760,
+     "h": 80
+    },
+    {
+     "kind": "pill",
+     "text": "WCAG 2.2／JIS X 8341-3 を参考（第三者の適合確認ではありません）",
+     "at": 1.6,
+     "dur": 3.3,
+     "x": 120,
+     "y": 160,
+     "w": 1400,
+     "h": 80
+    }
+   ],
+   "bg": "#1f2a24"
+  },
+  {
+   "name": "7c 前と後（文字の大きさ／情報量）",
+   "src": "insert:s7-compare",
+   "fit": "cover",
+   "dur": 4.8,
+   "xf": 0.5
+  },
+  {
+   "name": "7d 実機で確かめる",
+   "src": "V03_morning.MOV",
+   "in": 2.0,
+   "fit": "cover",
+   "dur": 6.6,
+   "xf": 0.6,
+   "overlays": [
+    {
+     "kind": "pill",
+     "text": "実機（居間のタブレット）で確認",
+     "at": 0.3,
+     "dur": 3.0,
+     "x": 120,
+     "y": 60,
+     "w": 800,
+     "h": 80
+    },
+    {
+     "kind": "pill",
+     "text": "11/2 キックオフ → 11/7 提出（この1週間）",
+     "at": 3.4,
+     "dur": 3.0,
+     "x": 120,
+     "y": 160,
+     "w": 1000,
+     "h": 80
+    }
+   ]
+  },
+  {
+   "name": "8a オチ（鳩D）",
+   "src": "V08_poke.MOV",
+   "in": 0.5,
+   "fit": "cover",
+   "dur": 8.0,
+   "keepAudio": true,
+   "gain": 18,
+   "voice": [
+    [
+     "HATO_D",
+     5.0
+    ]
+   ],
+   "overlays": [
+    {
+     "kind": "bubble",
+     "text": "……くるっくー。",
+     "at": 5.0,
+     "dur": 2.6,
+     "x": 1000,
+     "y": 120,
+     "w": 760,
+     "h": 220
+    }
+   ]
+  },
+  {
+   "name": "8b 締め（N8）",
+   "src": "docs/demo/ending-breathe.png",
+   "fit": "contain",
+   "dur": 9.5,
+   "voice": [
+    [
+     "N8",
+     0.8
+    ]
+   ],
+   "xf": 1.0
+  }
+ ]
+}
