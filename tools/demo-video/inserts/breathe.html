@@ -1,0 +1,13 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .wrap { position:absolute; inset:0 0 180px 0; display:grid; place-items:center; }
+  .t { font-size:96px; font-weight:700; letter-spacing:.14em; color:var(--fg); text-shadow:1px 1px 0 #fff, 2px 2px 0 rgb(20 24 28 / .12); }
+  .s { font-size:30px; color:var(--muted); letter-spacing:.2em; margin-top:18px; text-align:center; }
+</style></head><body>
+<div class="wrap"><div id="b" style="text-align:center"><div class="t">ほんの少し、息をつける時間を。</div><div class="s">5 minutes to breathe</div></div></div>
+<script>
+  window.DURATION = 7.0;
+  const ease = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+  window.render = (t) => { const u = ease(t / 1.2); const b = document.getElementById("b"); b.style.opacity = String(u); b.style.letterSpacing = `${(1 - u) * 0.1}em`; b.style.transform = `scale(${0.98 + 0.02 * u})`; };
+  window.render(0); window.ready = true;
+</script></body></html>

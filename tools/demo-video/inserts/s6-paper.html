@@ -1,0 +1,42 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .beats { position:absolute; inset:0; display:flex; justify-content:center; align-items:center; gap:40px; }
+  .beat { font-size:260px; font-weight:700; color:var(--red); font-family:"IPAMincho","IPAPMincho",serif; opacity:0; transform:scale(1.6); text-shadow:0 10px 30px rgb(200 16 46 / .25); }
+  .paper { position:absolute; left:50%; top:50%; width:908px; height:1216px; margin-left:-454px; margin-top:-608px; transform-origin:50% 50%; opacity:0; box-shadow:0 20px 60px rgb(0 0 0 / .25); }
+  .paper img { width:908px; height:1216px; display:block; }
+  .credit { position:absolute; right:60px; bottom:50px; background:#fff; border:3px solid var(--accent); color:var(--accent); font-size:34px; font-weight:700; padding:10px 24px; border-radius:999px; box-shadow:0 8px 20px rgb(0 0 0 / .15); opacity:0; }
+  .burst { position:absolute; inset:0; opacity:0; background:repeating-conic-gradient(from 0deg at 50% 50%, #14181c 0deg 3deg, transparent 3deg 11deg); }
+  .burst::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% 50%, var(--bg) 0 34%, transparent 62%); }
+  .stamp { position:absolute; left:120px; top:90px; color:var(--red); border:14px solid var(--red); border-radius:18px; font-family:"IPAMincho","IPAPMincho",serif; font-size:170px; font-weight:700; padding:0 30px; line-height:1.15; transform:rotate(-14deg) scale(3); opacity:0; background:rgb(255 255 255 / .85); }
+</style></head><body>
+<div class="beats"><span class="beat" id="b1">鳩</span><span class="beat" id="b2">月</span><span class="beat" id="b3">報！</span></div>
+<div class="burst" id="burst"></div>
+<div class="paper" id="paper"><img src="/tools/demo-video/out/ui/paper.png"></div>
+<div class="stamp" id="stamp">号外</div>
+<div class="credit" id="credit">見出し・記事：Claude　数字：記録から集計</div>
+<script>
+  window.DURATION = 7.0;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
+  // 紙面の部分（paper-parts.json）：見出し y165 h63、記事 x508 y284 w383 h519（908×1216 基準）
+  function view(t) {
+    // 2.6〜4.0 全体が落ちてくる → 4.0〜5.6 全体 → 5.6〜7.4 見出しへ → 7.4〜11 記事へ
+    const fit = 1040 / 1216;
+    if (t < 5.6) return { s: fit, x: 0, y: 0 };
+    const a = ease((t - 5.6) / 1.4); const b = ease((t - 8.2) / 1.4);
+    const sHead = 2.0, cxH = 454, cyH = 197;           // 見出しの中心
+    const sArt = 2.3, cxA = 700, cyA = 470;            // 記事1〜2の中心
+    const s = fit + (sHead - fit) * a + (sArt - sHead) * b;
+    const cx = 454 + (cxH - 454) * a + (cxA - cxH) * b, cy = 608 + (cyH - 608) * a + (cyA - cyH) * b;
+    return { s, x: (454 - cx) * s, y: (608 - cy) * s };
+  }
+  window.render = (t) => {
+    [["b1", 0.3], ["b2", 1.0], ["b3", 1.7]].forEach(([id, t0]) => { const u = ease((t - t0) / 0.35); const e = $(id); e.style.opacity = String(u * (1 - ease((t - 2.7) / 0.4))); e.style.transform = `scale(${1.6 - 0.6 * u})`; });
+    const p = $("paper"); const drop = ease((t - 2.6) / 0.9); const v = view(t);
+    const land = t - 3.5; const shake = land > 0 && land < 0.5 ? Math.sin(land * 60) * 14 * (1 - land / 0.5) : 0;
+    p.style.opacity = String(drop); p.style.transform = `translate(${v.x + shake}px, ${v.y - (1 - drop) * 120}px) scale(${v.s})`;
+    $("burst").style.opacity = String(ease((t - 2.6) / 0.3) * (1 - ease((t - 5.6) / 0.6)) * 0.35);
+    const st = ease((t - 3.6) / 0.25); $("stamp").style.opacity = String(st * (1 - ease((t - 5.6) / 0.4))); $("stamp").style.transform = `rotate(-14deg) scale(${3 - 2 * st})`;
+    $("credit").style.opacity = String(ease((t - 4.2) / 0.5) * (1 - ease((t - 5.8) / 0.4)));
+  };
+  const im = document.querySelector("img"); if (im.complete) window.ready = true; else im.onload = () => { window.ready = true; }; window.render(0);
+</script></body></html>

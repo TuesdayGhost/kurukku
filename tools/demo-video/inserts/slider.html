@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<title>差し込み：Skill で見直す前と後（分割スライダー）</title>
+<style>
+  html,body { margin:0; width:1920px; height:1080px; overflow:hidden; background:#1f2a24; color:#e9edf1; font-family:"IPAPGothic","IPAGothic",sans-serif; }
+  .wrap { position:absolute; left:210px; top:120px; width:1500px; height:938px; border-radius:16px; overflow:hidden; box-shadow:0 12px 50px rgb(0 0 0 / .4); }
+  .wrap img { position:absolute; left:0; top:0; width:1500px; height:938px; }
+  #before { clip-path: inset(0 50% 0 0); }
+  .bar { position:absolute; top:0; width:6px; height:938px; background:#fff; box-shadow:0 0 0 2px rgb(0 0 0 / .25); }
+  .knob { position:absolute; top:440px; width:64px; height:64px; margin-left:-29px; border-radius:50%; background:#fff; color:#2f5d50; display:grid; place-items:center; font-size:26px; font-weight:700; box-shadow:0 4px 16px rgb(0 0 0 / .3); }
+  .tag { position:absolute; top:34px; font-size:40px; font-weight:700; padding:6px 22px; border-radius:10px; background:rgb(20 24 28 / .8); color:#fff; }
+  .cap { position:absolute; left:0; right:0; font-size:30px; text-align:center; color:#e9edf1; }
+  .title { position:absolute; left:60px; top:44px; font-size:40px; font-weight:700; color:#9fd6c2; }
+</style></head>
+<body>
+<div class="title">自作 Skill で、父の画面を見直した</div>
+<div class="wrap">
+  <img id="after" src="/docs/demo/skill-after.png">
+  <img id="before" src="/docs/demo/skill-before.png">
+  <div class="tag" id="tagB" style="left:30px">前</div>
+  <div class="tag" id="tagA" style="right:30px">後</div>
+  <div class="bar" id="bar"></div><div class="knob" id="knob">◀▶</div>
+</div>
+<div class="cap" style="top:60px; left:1000px; right:0; text-align:left; font-size:26px; color:#c8d1cc"></div>
+<div class="cap" id="capL" style="left:210px; width:740px; top:1010px">前：ごはん・お薬も、終わった予定も、ぜんぶ並ぶ</div>
+<div class="cap" id="capR" style="left:970px; width:740px; top:1010px">後：いまの予定だけ、太く大きく。中身は一言で添える</div>
+<script>
+  window.DURATION = 6.0;
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const ease = (x) => (1 - Math.cos(Math.PI * clamp(x))) / 2;
+  const seg = (t, a, b, from, to) => from + (to - from) * ease((t - a) / (b - a));
+  window.render = (t) => {
+    let p;
+    if (t < 0.5) p = 0.94; else if (t < 3.0) p = seg(t, 0.5, 3.0, 0.94, 0.06); else if (t < 3.6) p = 0.06; else if (t < 5.2) p = seg(t, 3.6, 5.2, 0.06, 0.5); else p = 0.5;
+    const x = p * 1500;
+    document.getElementById("before").style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0)`;
+    document.getElementById("bar").style.left = (x - 3) + "px";
+    document.getElementById("knob").style.left = x + "px";
+    document.getElementById("tagB").style.opacity = String(clamp((p - 0.1) / 0.15));
+    document.getElementById("tagA").style.opacity = String(clamp((0.9 - p) / 0.15));
+  };
+  let n = 0; for (const im of document.images) { if (im.complete) n++; else im.onload = () => { if (++n === 2) window.ready = true; }; }
+  if (n === 2) window.ready = true;
+  window.render(0);
+</script>
+</body></html>

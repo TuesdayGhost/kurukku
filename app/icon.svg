@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <mask id="kuru-a2-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <rect width="256" height="256" fill="#fff"/>
+      <circle cx="128" cy="128" r="102" fill="none" stroke="#000" stroke-width="6"/>
+      <g transform="translate(30 27.6) scale(0.8)">
+        <path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"/>
+        <circle cx="178" cy="81" r="6.5" fill="#fff"/>
+        <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+      </g>
+    </mask>
+  </defs>
+  <circle cx="128" cy="128" r="118" fill="#2f5d50" mask="url(#kuru-a2-cut)"/>
+</svg>

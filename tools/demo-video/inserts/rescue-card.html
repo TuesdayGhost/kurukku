@@ -1,0 +1,44 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .stage { position:absolute; inset:0 0 180px 0; overflow:hidden; }
+  .btnwrap { position:absolute; inset:0; display:grid; place-items:center; }
+  .btnimg { width:1500px; border-radius:16px; box-shadow:0 10px 40px rgb(0 0 0 / .18); transform-origin:78% 50%; }
+  .card { position:absolute; inset:0; display:grid; grid-template-columns:500px 640px 1fr; gap:30px; padding:30px 50px; box-sizing:border-box; opacity:0; align-items:center; }
+  .face { position:relative; border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 8px 30px rgb(0 0 0 / .15); }
+  .face { height:800px; } .face img { width:100%; height:100%; object-fit:cover; object-position:top; display:block; }
+  .right { display:grid; gap:20px; align-content:center; }
+  .pane { position:relative; border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 8px 30px rgb(0 0 0 / .15); }
+  .pane img { width:100%; display:block; }
+  .hl { position:absolute; inset:0; border:8px solid var(--red); border-radius:14px; box-shadow:0 0 0 4000px rgb(20 24 28 / .0); opacity:0; pointer-events:none; }
+  .tag { position:absolute; left:16px; top:16px; background:var(--red); color:#fff; font-size:30px; font-weight:700; padding:4px 16px; border-radius:8px; opacity:0; }
+  .three { position:absolute; left:0; right:0; bottom:40px; display:flex; justify-content:center; gap:40px; opacity:0; }
+  .three span { background:var(--accent); color:#fff; font-size:44px; font-weight:700; padding:14px 40px; border-radius:999px; }
+</style></head><body>
+<div class="stage">
+  <div class="btnwrap" id="bw"><img class="btnimg" id="btn" src="/tools/demo-video/out/crops/rc-button.png"></div>
+  <div class="card" id="card">
+    <div class="face"><img src="/tools/demo-video/out/crops/rc-face.png"><div class="hl" id="h1"></div><div class="tag" id="t1">最近の顔写真</div></div>
+    <div class="right">
+      <div class="pane"><img src="/tools/demo-video/out/crops/rc-stats.png"><div class="hl" id="h2"></div><div class="tag" id="t2">身長・体重・靴のサイズ（約＋測った月）</div></div>
+      <div class="pane"><img src="/tools/demo-video/out/crops/rc-features.png"></div>
+    </div>
+    <div class="pane" style="align-self:center"><img src="/tools/demo-video/out/crops/rc-clothes.png"><div class="hl" id="h3"></div><div class="tag" id="t3">よく着る服</div></div>
+  </div>
+  <div class="three" id="three"><span>見せる</span><span>読み上げる</span><span>送る</span></div>
+</div>
+<script>
+  window.DURATION = 13.0;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  const hl = (n, t0, t) => { const u = ease((t - t0) / 0.35); document.getElementById("h" + n).style.opacity = String(u); document.getElementById("t" + n).style.opacity = String(u); };
+  window.render = (t) => {
+    // 0〜3.4：「いつも一番上のこのボタンに」→ 実際の画面のボタンへ寄る
+    const z = 1 + 0.9 * ease((t - 0.6) / 2.4);
+    document.getElementById("btn").style.transform = `scale(${z})`;
+    document.getElementById("bw").style.opacity = String(1 - ease((t - 3.4) / 0.4));
+    document.getElementById("card").style.opacity = String(ease((t - 3.5) / 0.5));
+    hl(1, 6.1, t); hl(2, 7.3, t); hl(3, 8.6, t);   // 写真も / 身長も / よく着る服も
+    document.getElementById("three").style.opacity = String(ease((t - 10.8) / 0.5));
+  };
+  let n = 0; for (const im of document.images) { if (im.complete) n++; else im.onload = () => { if (++n === document.images.length) window.ready = true; }; }
+  if (n === document.images.length) window.ready = true; window.render(0);
+</script></body></html>

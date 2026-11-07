@@ -1,0 +1,23 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  html,body { background:#1f2a24; color:#e9edf1; }
+  .title { position:absolute; left:60px; top:44px; font-size:40px; font-weight:700; color:#9fd6c2; }
+  .wrap { position:absolute; inset:120px 0 180px 0; display:grid; place-items:center; }
+  .list { display:grid; gap:34px; width:1500px; }
+  .b { display:flex; align-items:center; gap:30px; background:rgb(255 255 255 / .06); border:2px solid #9fd6c2; border-radius:18px; padding:26px 36px; opacity:0; transform:translateY(16px); }
+  .b .n { font-size:70px; font-weight:700; color:#f0b37e; font-variant-numeric:tabular-nums; min-width:360px; }
+  .b .n small { font-size:30px; color:#e9edf1; margin-left:6px; }
+  .b .d { font-size:34px; line-height:1.4; } .b .d small { display:block; font-size:24px; color:#c8d1cc; }
+</style></head><body>
+<div class="title">確かめたこと</div>
+<div class="wrap"><div class="list">
+  <div class="b" id="b1"><div class="n">7.4<small>: 1</small></div><div class="d">本人の画面の小さい文字のコントラスト<small>WCAG 2.2 の 1.4.6（AAA）を本人の画面に採用。style.css の色から計算</small></div></div>
+  <div class="b" id="b2"><div class="n">34<small>件</small></div><div class="d">自動テスト 全部合格<small>予定の計算・天気・レスキューカードの文字・鳩月報の材料と費用の上限（node --test）</small></div></div>
+  <div class="b" id="b3"><div class="n">97<small>コミット</small></div><div class="d">11/2 のキックオフから 11/7 まで、毎日<small>リポジトリの git log より（11/7 時点）</small></div></div>
+</div></div>
+<script>
+  window.DURATION = 6.5;
+  const ease = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+  window.render = (t) => { [["b1", 0.2], ["b2", 1.2], ["b3", 2.2]].forEach(([id, t0]) => { const u = ease((t - t0) / 0.5); const e = document.getElementById(id); e.style.opacity = String(u); e.style.transform = `translateY(${(1 - u) * 16}px)`; }); };
+  window.render(0); window.ready = true;
+</script></body></html>

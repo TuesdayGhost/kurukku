@@ -1,0 +1,43 @@
+{
+  "name": "くるっくー",
+  "short_name": "くるっくー",
+  "description": "家族の知らせと日々を届ける鳩。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "browser",
+  "background_color": "#e9edf1",
+  "theme_color": "#e9edf1",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

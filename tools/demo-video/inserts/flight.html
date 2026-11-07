@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<title>差し込み：鳩が手紙を運ぶ（家族のスマホ → 家じゅうの端末）</title>
+<style>
+  :root { --bg:#e9edf1; --fg:#14181c; --muted:#434c55; --accent:#2f5d50; --accent2:#5a4670; --line:#c9d1d8; --surface:#fff; }
+  html,body { margin:0; width:1920px; height:1080px; overflow:hidden; background:var(--bg); color:var(--fg); font-family:"IPAPGothic","IPAGothic",sans-serif; }
+  .abs { position:absolute; }
+  .title { left:60px; top:44px; font-size:40px; font-weight:700; color:var(--accent); }
+  .device { border-radius:28px; background:#14181c; box-shadow:0 10px 40px rgb(0 0 0 / .18); }
+  .screen { position:absolute; inset:14px; border-radius:18px; background:var(--bg); overflow:hidden; }
+  .label { font-size:28px; color:var(--muted); font-weight:700; text-align:center; }
+  /* スマホの画面（家族の知らせ） */
+  .ph-h { position:absolute; left:18px; top:22px; font-size:22px; font-weight:700; }
+  .ph-card { position:absolute; left:16px; right:16px; top:64px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; display:grid; gap:10px; font-size:18px; }
+  .ph-box { border:1px solid var(--line); border-radius:8px; padding:10px; min-height:70px; font-size:20px; line-height:1.4; }
+  .ph-chk { display:flex; gap:8px; align-items:center; font-size:17px; }
+  .ph-chk i { width:20px; height:20px; border:2px solid var(--accent); border-radius:4px; background:var(--accent); display:inline-block; }
+  .ph-btn { background:var(--accent); color:#fff; border-radius:8px; text-align:center; font-weight:700; padding:12px; font-size:20px; transform-origin:center; }
+  /* 表示端末のミニ画面 */
+  .d-date { position:absolute; left:28px; top:24px; font-size:34px; font-weight:700; }
+  .d-wd { position:absolute; left:28px; top:70px; font-size:26px; color:var(--accent); font-weight:700; }
+  .d-clock { position:absolute; left:28px; top:118px; font-size:62px; font-weight:500; letter-spacing:.02em; }
+  .d-clock small { font-size:22px; font-weight:700; margin-right:6px; vertical-align:.3em; }
+  .d-plan { position:absolute; right:24px; top:24px; width:250px; background:var(--surface); border-radius:10px; padding:10px 12px; font-size:18px; display:grid; gap:4px; }
+  .d-plan b { color:var(--accent); font-size:16px; }
+  .d-msg { position:absolute; left:24px; right:24px; bottom:22px; background:var(--surface); border-left:10px solid var(--accent2); border-radius:8px; padding:10px 16px; font-size:24px; font-weight:500; white-space:nowrap; overflow:hidden; }
+  .d-msg b { color:var(--accent2); margin-right:.5em; }
+  .pigeon { width:150px; height:118px; color:var(--accent); --pigeon-bg:var(--bg); transform-origin:50% 50%; }
+  .mail { width:56px; height:56px; color:var(--accent2); background:#fff; border-radius:10px; padding:6px; box-shadow:0 4px 14px rgb(0 0 0 / .2); box-sizing:border-box; }
+  .note { font-size:44px; color:var(--accent2); font-weight:700; }
+  .cap { left:0; right:0; bottom:40px; text-align:center; font-size:44px; font-weight:700; color:var(--fg); }
+</style></head>
+<body>
+<div class="abs title">家族のスマホから、家じゅうの端末へ</div>
+
+<!-- 家族のスマホ -->
+<div class="abs device" id="phone" style="left:200px; top:230px; width:340px; height:660px;">
+  <div class="screen">
+    <div class="ph-h">家族からの知らせ</div>
+    <div class="ph-card">
+      <div>誰から：<span style="background:var(--accent);color:#fff;border-radius:999px;padding:2px 10px">お母さん</span></div>
+      <div class="ph-box">買い物に行ってきます。12時に戻ります</div>
+      <div class="ph-chk"><i></i>鳩の音と読み上げで知らせる</div>
+      <div class="ph-btn" id="btn">届ける</div>
+    </div>
+  </div>
+</div>
+<div class="abs label" style="left:120px; top:910px; width:500px;">家族のスマホ<br><span style="font-size:22px;font-weight:500">台所でも、外出先でも</span></div>
+
+<!-- 父の部屋のタブレット -->
+<div class="abs device" style="left:1180px; top:120px; width:600px; height:380px;">
+  <div class="screen">
+    <div class="d-date">11月5日</div><div class="d-wd">木曜日</div>
+    <div class="d-clock"><small>午前</small>11:02</div>
+    <div class="d-plan"><b>お父さん</b><span>09:00　デイ</span><b>お母さん</b><span>15:00〜16:30　買い物</span></div>
+    <div class="d-msg" id="msg1"><b>お母さん</b>買い物に行ってきます。12時に戻ります</div>
+  </div>
+</div>
+<div class="abs label" style="left:1180px; top:510px; width:600px;">父の部屋のタブレット</div>
+
+<!-- 居間の Yoga -->
+<div class="abs device" style="left:1180px; top:590px; width:600px; height:380px;">
+  <div class="screen">
+    <div class="d-date">11月5日</div><div class="d-wd">木曜日</div>
+    <div class="d-clock"><small>午前</small>11:02</div>
+    <div class="d-plan"><b>お父さん</b><span>09:00　デイ</span><b>お母さん</b><span>15:00〜16:30　買い物</span></div>
+    <div class="d-msg" id="msg2"><b>お母さん</b>買い物に行ってきます。12時に戻ります</div>
+  </div>
+</div>
+<div class="abs label" style="left:1180px; top:980px; width:600px;">居間のパソコン</div>
+
+<div class="abs" id="p1"><svg class="pigeon" viewBox="36 60 186 146"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg><div class="abs mail" id="m1" style="left:46px; top:84px"></div></div>
+<div class="abs" id="p2"><svg class="pigeon" viewBox="36 60 186 146"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg><div class="abs mail" id="m2" style="left:46px; top:84px"></div></div>
+<div class="abs note" id="n1">♪</div><div class="abs note" id="n2">♪</div>
+<div class="abs cap" id="cap">同じ知らせが、家じゅうの端末に届く</div>
+
+<script type="module">
+  import { icon } from "/app/icons.js";
+  for (const id of ["m1", "m2"]) document.getElementById(id).innerHTML = icon("mail", "ic").replace('class="ic"', 'class="ic" style="width:100%;height:100%"');
+  window.DURATION = 6.0;
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const ease = (x) => (1 - Math.cos(Math.PI * clamp(x))) / 2;
+  const lerp = (a, b, x) => a + (b - a) * x;
+  // 放物線（2次ベジェ）で飛ぶ。向きは進行方向に合わせる
+  function fly(el, t0, from, to, t) {
+    const u = ease((t - t0) / 2.2);
+    const cx = (from[0] + to[0]) / 2, cy = Math.min(from[1], to[1]) - 360;
+    const bez = (s) => [(1 - s) ** 2 * from[0] + 2 * (1 - s) * s * cx + s * s * to[0], (1 - s) ** 2 * from[1] + 2 * (1 - s) * s * cy + s * s * to[1]];
+    const [x, y] = bez(u), [x2, y2] = bez(Math.min(1, u + 0.01));
+    const ang = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI;
+    const flap = Math.sin((t - t0) * 22) * 6;
+    const visible = t >= t0 && u < 1;
+    el.style.opacity = visible ? "1" : "0";
+    el.style.left = (x - 75) + "px"; el.style.top = (y - 60) + "px";
+    el.querySelector(".pigeon").style.transform = `rotate(${ang * 0.5 + flap}deg)`;   // 判子の鳩は右向き。進行方向（右）に合わせる
+    return u;
+  }
+  window.render = (t) => {
+    // 0.2〜0.9：「届ける」を押す
+    const press = t > 0.25 && t < 0.6;
+    $("btn").style.transform = press ? "scale(0.95)" : "scale(1)";
+    $("btn").style.filter = press ? "brightness(0.8)" : "none";
+    const u1 = fly($("p1"), 0.7, [370, 760], [1480, 440], t);
+    const u2 = fly($("p2"), 0.95, [370, 760], [1480, 910], t);
+    // 届いたら知らせの帯が滑り込む
+    for (const [id, u, nid, base] of [["msg1", u1, "n1", [1800, 300]], ["msg2", u2, "n2", [1800, 770]]]) {
+      const a = u >= 1 ? ease((t - (id === "msg1" ? 2.9 : 3.15)) / 0.4) : 0;
+      $(id).style.opacity = String(a); $(id).style.transform = `translateX(${(1 - a) * 60}px)`;
+      const n = $(nid); const ta = id === "msg1" ? 3.0 : 3.25;
+      const nv = t > ta && t < ta + 1.4 ? 1 - (t - ta) / 1.4 : 0;
+      n.style.opacity = String(nv); n.style.left = base[0] + "px"; n.style.top = (base[1] - (t - ta) * 60) + "px";
+    }
+    $("cap").style.opacity = String(ease((t - 3.6) / 0.5));
+  };
+  window.render(0); window.ready = true;
+</script>
+</body></html>

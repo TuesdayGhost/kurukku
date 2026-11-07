@@ -1,0 +1,66 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
+<style>
+  .stage { position:absolute; inset:0 0 180px 0; overflow:hidden; }
+  .notes { position:absolute; left:80px; top:70px; width:700px; display:grid; gap:26px; }
+  .note { background:var(--notice); border-left:10px solid #c99a2e; padding:22px 28px; font-size:34px; line-height:1.5; box-shadow:0 8px 24px rgb(0 0 0 / .12); opacity:0; transform:translateX(-30px) rotate(-1deg); position:relative; }
+  .note small { display:block; font-size:22px; color:var(--muted); margin-bottom:4px; }
+  .note.m2 { transform:translateX(-30px) rotate(0.8deg); } .note.m3 { transform:translateX(-30px) rotate(-0.5deg); }
+  .tiles { position:absolute; right:80px; top:70px; width:900px; display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; opacity:0; }
+  .tile { border:3px solid #141414; background:#fff; padding:14px 6px 10px; text-align:center; display:grid; justify-items:center; gap:2px; }
+  .tile .ic { width:44px; height:44px; } .num { font-size:50px; font-weight:700; color:var(--red); line-height:1.1; font-variant-numeric:tabular-nums; } .num small { font-size:20px; color:#141414; }
+  .lab { font-size:22px; font-weight:700; } .who { font-size:16px; color:#555; }
+  .tcap { grid-column:1 / -1; font-size:22px; color:var(--muted); }
+  .paper { position:absolute; right:80px; top:70px; width:900px; background:#fbfaf6; border:4px solid #141414; padding:22px 28px; box-sizing:border-box; opacity:0; }
+  .paper .mast { display:flex; gap:16px; align-items:baseline; border-bottom:5px double #141414; padding-bottom:6px; margin-bottom:10px; }
+  .paper .mast b { font-size:34px; background:var(--red); color:#fff; padding:0 12px; letter-spacing:.12em; } .paper .mast span { font-size:18px; }
+  .paper h2 { margin:0 0 8px; font-size:48px; color:var(--red); line-height:1.15; }
+  .paper .sub { display:inline-block; background:#141414; color:#fbfaf6; font-size:20px; font-weight:700; padding:2px 10px; margin-bottom:12px; }
+  .art { margin:0 0 10px; } .art h3 { margin:0 0 2px; font-size:24px; border-left:6px solid var(--red); padding-left:8px; } .art p { margin:0; font-size:21px; line-height:1.55; }
+  mark { background:transparent; color:inherit; } mark.on { background:linear-gradient(transparent 40%, #ffe66d 40%); }
+  .arrow { position:absolute; left:800px; top:420px; font-size:70px; color:var(--accent); opacity:0; }
+  .cap { position:absolute; left:80px; bottom:20px; font-size:28px; color:var(--muted); }
+</style></head><body>
+<div class="stage">
+  <div class="notes">
+    <div class="note m1" id="n1"><small>10月28日</small>デイで<mark id="k1">書道を得意そうに披露</mark>した。</div>
+    <div class="note m2" id="n2"><small>10月11日</small>デイで<mark id="k2">芋煮会</mark>。</div>
+    <div class="note m3" id="n3"><small>10月20日</small>お父さん、<mark id="k3">お菓子がないとご立腹</mark>。</div>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div class="paper" id="paper">
+    <div class="mast"><b>鳩月報</b><span>2026年10月号　発行：はとやま</span></div>
+    <h2><mark id="h0">はとやま、42回つつかれる！</mark></h2>
+    <div class="sub">デイは予定9回、はと子の仕事は予定21回</div>
+    <div class="art"><h3>お父さん書道で魅せた</h3><p>28日、お父さんが<mark id="a1">デイで書道を得意そうに披露</mark>！<mark id="a2">11日はデイで芋煮会</mark>、12日は夕飯の秋刀魚を「とてもおいしかった」と大絶賛。秋の味覚と芸術を満喫した10月だ。デイは予定9回、29日の予定には床屋の文字も。</p></div>
+    <div class="art"><h3>お菓子問題が勃発</h3><p>20日、<mark id="a3">お父さんが「お菓子がない」とご立腹</mark>。台所の補給線に穴があいた格好だ。お母さんの買い物は今月予定4回、次の補給に注目が集まる。なお伝言の送信は今月0件、鳩に責任はないとみられる。</p></div>
+    <div class="art"><h3>はとやま酷使の月</h3><p><mark id="a0">はとやまがつつかれた回数は、なんと42回</mark>！メモ5件、写真2枚を運んだ。はと子の仕事は予定21回、いちばん遅い終わりは21時40分。</p></div>
+  </div>
+  <div class="arrow" id="arrow">→</div>
+  <div class="cap" id="cap">豆田家（架空）の10月の記録と、実際に生成した10月号。数字はコードで数え、見出しと記事を Claude が書く</div>
+</div>
+<script type="module">
+  import { icon } from "/app/icons.js"; import { pigeon } from "/app/brand.js";
+  // 実際の gazette_stats（2026-10）の値
+  const T = [["bus", 9, "回", "デイ", "お父さん・予定"], ["briefcase", 21, "回", "仕事", "はと子・予定"], ["shopping-cart", 4, "回", "買い物", "お母さん・予定"], ["moon", 1300, "time", "いちばん遅い戻り", "はと子・予定"],
+             ["pigeon", 42, "回", "はとやまがつつかれた", ""], ["camera", 5, "件", "ひとこと・写真", "写真2枚"], ["pill", 31, "回", "お薬", "お父さん・予定"], ["coffee", 31, "回", "朝ごはん", "お父さん・予定"]];
+  const box = document.getElementById("tiles"); const nums = [];
+  for (const [ic, n, unit, lab, who] of T) { const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `${ic === "pigeon" ? pigeon("ic").replace('class="ic"', 'class="ic" style="--pigeon-bg:#fff;color:#141414"') : icon(ic, "ic")}<div class="num"><span></span><small>${unit === "time" ? "" : unit}</small></div><div class="lab">${lab}</div><div class="who">${who}</div>`;
+    box.append(d); nums.push([d.querySelector(".num span"), n, unit]); }
+  const c = document.createElement("div"); c.className = "tcap"; c.textContent = "「予定」は予定の回数で、実際に出かけた回数ではありません"; box.append(c);
+  window.DURATION = 15.5;
+  const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  const $ = (id) => document.getElementById(id);
+  window.render = (t) => {
+    // N6: 0〜1.3「月末には」 1.6〜4.35「鳩が運んだ知らせを一枚の新聞に」 4.8〜6.6「数字は記録を集計し」 6.6〜8.7「Claudeが見出しと記事を書きます」
+    [["n1", 0.2], ["n2", 0.8], ["n3", 1.4]].forEach(([id, t0]) => { const u = ease((t - t0) / 0.5); const e = $(id); e.style.opacity = String(u); e.style.transform = e.style.transform.replace(/translateX\([^)]*\)/, `translateX(${(1 - u) * -30}px)`); });
+    const tv = ease((t - 4.6) / 0.4) * (1 - ease((t - 7.0) / 0.4));
+    $("tiles").style.opacity = String(tv);
+    nums.forEach(([el, n, unit], i) => { const u = ease((t - 4.8 - i * 0.12) / 1.3); const v = Math.round(n * u); el.textContent = unit === "time" ? `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}` : String(v); });
+    $("paper").style.opacity = String(ease((t - 7.0) / 0.5));
+    $("arrow").style.opacity = String(ease((t - 8.0) / 0.4));
+    const pairs = [["k1", "a1", 8.4], ["k2", "a2", 9.6], ["k3", "a3", 10.8], [null, "a0", 12.0], [null, "h0", 12.6]];
+    for (const [k, a, t0] of pairs) { if (k) $(k).classList.toggle("on", t >= t0); $(a).classList.toggle("on", t >= t0); }
+  };
+  window.render(0); window.ready = true;
+</script></body></html>
