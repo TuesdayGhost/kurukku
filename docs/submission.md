@@ -66,7 +66,8 @@ https://github.com/TuesdayGhost/kurukku
 - [x] **Claude.ai**：チャットでの相談・インタビュー、Claude Code のクラウドのセッション（claude.ai/code・スマホのアプリから）
 - [x] **Claude API**：アプリの中の鳩月報（Edge Function から。structured outputs・サーバー側のフォールバック）
 - [x] **その他**：Claude Code on the web（クラウドのセッション）、Agent Skills（自作の kurukku-ui-review）、MCP（Supabase のコネクタ）
-- [ ] Claude Code CLI／IDE 拡張／Desktop／Cowork／Managed Agents／Agent SDK：**使っていなければ付けない**（Desktop のアプリから Claude Code を使った日があれば Desktop にも付ける）
+- [x] **Claude Code Desktop**：パソコンの Claude のアプリから Claude Code を使った（11/7 葵依さん）
+- [ ] Claude Code CLI／IDE 拡張／Cowork／Managed Agents／Agent SDK：使っていないので付けない
 
 ### 開発中に一番詰まった場面（3000字以内）
 
