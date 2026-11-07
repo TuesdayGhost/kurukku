@@ -5,7 +5,7 @@
 認知症の父と暮らす家族のための、電子伝書鳩のWebアプリです。Built with Claude: Japan 2026（2026年11月2日〜8日）の期間中に作りました。
 
 - アプリ：https://tuesdayghost.github.io/kurukku/
-- デモ動画：（提出時に追加）
+- デモ動画（3分以内）：https://youtu.be/Hh3njk2oaDI
 
 ## 誰の、どんな課題を、どう解決するか
 
