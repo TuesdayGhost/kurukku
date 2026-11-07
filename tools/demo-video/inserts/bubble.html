@@ -1,0 +1,25 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<style>
+  html,body { margin:0; width:1100px; height:260px; overflow:hidden; background:transparent; font-family:"Zen Kaku Gothic New","IPAPGothic","IPAGothic",sans-serif; }
+  .row { position:absolute; right:0; bottom:0; display:flex; align-items:center; gap:14px; }
+  .bubble { background:#fff; border:3px solid #c9d1d8; border-radius:24px; padding:14px 26px; font-size:36px; font-weight:700; color:#14181c; line-height:1.4; max-width:880px; box-shadow:0 8px 24px rgb(0 0 0 / .15); transform-origin:100% 60%; }
+  .pigeon { width:150px; height:150px; border-radius:50%; background:#fff; border:3px solid #c9d1d8; display:grid; place-items:center; color:#2f5d50; --pigeon-bg:#fff; transform-origin:50% 100%; }
+  .pigeon svg { width:68%; height:auto; transform:scaleX(-1); }
+</style></head><body>
+<div class="row"><div class="bubble" id="b"></div><div class="pigeon" id="p"><svg viewBox="36 60 186 146" aria-hidden="true"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
+  <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg></div></div>
+<script>
+  const q = new URLSearchParams(location.search); const text = q.get("text") || ""; window.DURATION = Number(q.get("dur") || 4);
+  document.getElementById("b").textContent = text;
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  window.render = (t) => {
+    // ポンと弾む（0〜0.45秒）→ 表示 → 最後の0.3秒で消える
+    const u = clamp(t / 0.45); const bounce = u < 1 ? 1.12 * Math.sin(u * Math.PI / 2) * (1 - 0.12 * u) : 1;
+    const out = 1 - clamp((t - (window.DURATION - 0.3)) / 0.3);
+    const p = document.getElementById("p"), b = document.getElementById("b");
+    p.style.transform = `scale(${Math.min(bounce, 1.08)}) translateY(${-10 * Math.sin(clamp(t / 0.5) * Math.PI)}px)`; p.style.opacity = String(out);
+    b.style.transform = `scale(${t < 0.15 ? 0 : bounce})`; b.style.opacity = String(out);
+  };
+  window.render(0); window.ready = true;
+</script></body></html>

@@ -28,7 +28,7 @@ function fitChain(label, w, h, zoom) {
     `[${label}bg][${label}fg]overlay=(W-w)/2:(H-h)/2:format=auto${z}[${label}out]`;
 }
 
-const parts = []; let t = 0; const subs = []; const leads = []; const voices = []; const missing = [];
+const parts = []; let t = 0; const subs = []; const notes = []; const voices = []; const missing = [];
 for (const [i, s] of E.segments.entries()) {
   const src = resolveSrc(s.src); const out = path.join(work, `p${String(i).padStart(2, "0")}.mp4`);
   const ok = src && fs.existsSync(src); if (!ok) missing.push(s.src);
@@ -37,31 +37,41 @@ for (const [i, s] of E.segments.entries()) {
   if (!ok) {
     ff(["-f", "lavfi", "-i", `color=c=${bg}:s=${W}x${H}:r=${fps}`, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", out]);
   } else if (isImage) {
-    const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=${bg},fps=${fps},format=yuv420p,setsar=1`;
+    const vf = `scale=${W}:${VH}:force_original_aspect_ratio=decrease,pad=${W}:${VH}:(ow-iw)/2:(oh-ih)/2:color=${bg},pad=${W}:${H}:0:0:color=0x1f2a24,fps=${fps},format=yuv420p,setsar=1`;
     ff(["-loop", "1", "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", String(s.dur), "-vf", vf, "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", out]);
   } else {
     const hasAudio = probe(src, "a", "stream=codec_type").includes("audio");
     const useSrcAudio = s.keepAudio && hasAudio;
     const inputs = ["-ss", String(s.in || 0), "-i", src, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"];
+    const sp = s.speed || 1;   // 早回し（映像だけ。素材の音は使わない前提）
     let vchain;
     if (s.side) {   // 左右に並べる：左に side の素材、右に主の素材
       const side = resolveSrc(s.side.src); inputs.push("-ss", String(s.side.in || 0), "-i", side);
       const half = W / 2;
-      vchain = `[2:v]fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[sv];${fitChain("sv", half, VH, null)};` +
-        `[0:v]fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[mv];${fitChain("mv", half, VH, null)};` +
+      vchain = `[2:v]setpts=PTS/${sp},fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[sv];${fitChain("sv", half, VH, null)};` +
+        `[0:v]setpts=PTS/${sp},fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[mv];${fitChain("mv", half, VH, null)};` +
         `[svout][mvout]hstack=2[row];[row]pad=${W}:${H}:0:0:color=0x1f2a24,trim=0:${s.dur},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v]`;
     } else {
-      vchain = `[0:v]fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[mv];${fitChain("mv", W, VH, zoom)};` +
+      vchain = `[0:v]setpts=PTS/${sp},fps=${fps},tpad=stop_mode=clone:stop_duration=${s.dur}[mv];${fitChain("mv", W, VH, zoom)};` +
         `[mvout]pad=${W}:${H}:0:0:color=0x1f2a24,trim=0:${s.dur},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v]`;
     }
-    const achain = useSrcAudio ? `[0:a]aformat=sample_rates=48000:channel_layouts=stereo,apad,atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]` : `[1:a]atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]`;
-    ff([...inputs, "-filter_complex", `${vchain};${achain}`, "-map", "[v]", "-map", "[a]", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-ar", "48000", out]);
+    const achain = useSrcAudio ? `[0:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=${s.gain || 0}dB,apad,atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]` : `[1:a]atrim=0:${s.dur},asetpts=PTS-STARTPTS[a]`;
+    // 鳩の吹き出し：透明 PNG のコマ列を at 秒から重ねる（右下、帯の上）
+    let bchain = "";
+    if (s.bubble) {
+      const [name, at] = s.bubble; const dir = path.join(repo, "tools/demo-video/out/bubbles", name);
+      inputs.push("-framerate", String(fps), "-i", path.join(dir, "f%04d.png"));
+      const bi = inputs.filter((x) => x === "-i").length - 1;
+      vchain = vchain.replace("[v]", "[v0]");
+      bchain = `;[${bi}:v]format=rgba,setpts=PTS+${at}/TB[bb];[v0][bb]overlay=W-w-40:${VH}-h-30:eof_action=pass[v]`;
+    }
+    ff([...inputs, "-filter_complex", `${vchain}${bchain};${achain}`, "-map", "[v]", "-map", "[a]", "-t", String(s.dur), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-ar", "48000", out]);
   }
   parts.push({ out, dur: s.dur });
   // クロスフェードで各区間は XF 秒ずつ早く始まる
   const start = i === 0 ? 0 : t - XF; t = start + s.dur;
   for (const [a, b, text] of s.subs || []) subs.push([start + a, start + Math.min(b, s.dur), text]);
-  if (s.lead) leads.push([start + 0.2, start + Math.min(2.6, s.dur), s.lead]);
+  if (s.note) notes.push([start, start + s.dur, s.note]);
   for (const [stem, at] of s.voice || []) { const f = find(stem); if (f) voices.push([f, start + at]); else missing.push(stem); }
   console.log(`${String(i).padStart(2)} ${fmt(start)}  ${s.name}  (${s.dur}s)${ok ? "" : "  ※素材なし → 地の色"}`);
 }
@@ -83,10 +93,10 @@ const escA = (s) => s.replace(/\n/g, "\\N");
 const ass = [`[Script Info]`, `ScriptType: v4.00+`, `PlayResX: ${W}`, `PlayResY: ${H}`, `WrapStyle: 2`, ``, `[V4+ Styles]`,
   `Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding`,
   `Style: Sub,Zen Kaku Gothic New,46,&H00FFFFFF,&H00FFFFFF,&H00141414,&H00141414,-1,0,0,0,100,100,0,0,1,0,0,2,80,80,34,1`,
-  `Style: Lead,Zen Kaku Gothic New,72,&H00FFFFFF,&H00FFFFFF,&H0014181C,&H9014181C,-1,0,0,0,100,100,2,0,3,18,0,8,120,120,70,1`,
+  `Style: Note,Zen Kaku Gothic New,26,&H00E9EDF1,&H00FFFFFF,&H0014181C,&H8014181C,0,0,0,0,100,100,0,0,3,8,0,9,0,40,30,1`,
   ``, `[Events]`, `Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`,
   ...subs.map(([a, b, text]) => `Dialogue: 0,${ts(a)},${ts(b)},Sub,,0,0,0,,${escA(text)}`),
-  ...leads.map(([a, b, text]) => `Dialogue: 1,${ts(a)},${ts(b)},Lead,,0,0,0,,{\\fad(250,400)}${escA(text)}`)].join("\n");
+  ...notes.map(([a, b, text]) => `Dialogue: 1,${ts(a)},${ts(b)},Note,,0,0,0,,${escA(text)}`)].join("\n");
 const assFile = path.join(work, "subs.ass"); fs.writeFileSync(assFile, ass);
 fs.writeFileSync(outFile.replace(/\.mp4$/, ".srt"), subs.map(([a, b, text], i) => `${i + 1}\n${ts(a).replace(".", ",")}0 --> ${ts(b).replace(".", ",")}0\n${text}\n`).join("\n"));
 
