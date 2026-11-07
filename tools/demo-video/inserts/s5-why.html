@@ -1,31 +1,43 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="_common.css">
 <style>
   body { background:#2b3138; }
-  .sheet { position:absolute; left:360px; top:120px; width:760px; height:900px; background:#fbfaf6; border-radius:6px; box-shadow:0 30px 80px rgb(0 0 0 / .45); opacity:0; transform:translateY(40px); }
+  .intro { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:92px; opacity:0; letter-spacing:.06em; }
+  canvas { position:absolute; left:0; top:0; filter:blur(1.2px); }
+  .sheet { position:absolute; left:360px; top:120px; width:760px; height:900px; background:#fbfaf6; border-radius:6px; box-shadow:0 30px 80px rgb(0 0 0 / .45); opacity:0; transform:translateY(40px); overflow:hidden; }
+  .sheet .vig { position:absolute; inset:0; box-shadow:inset 0 0 60px rgb(30 36 43 / .18); opacity:0; }
   .sheet .line { position:absolute; left:60px; right:60px; height:2px; background:#d8d4c8; }
-  .print { position:absolute; left:520px; top:260px; width:420px; height:520px; background:#fff; border:1px solid #cfcac0; box-shadow:0 20px 50px rgb(0 0 0 / .4); transform:rotate(-7deg); opacity:0; display:grid; grid-template-rows:1fr auto; padding:24px; box-sizing:border-box; }
-  .print .ph { background:#e4e1d8; border-radius:4px; display:grid; place-items:center; color:#8b8578; font-size:28px; text-align:center; line-height:1.5; }
+  .ink { position:absolute; left:70px; font-family:"IPAMincho","IPAPMincho",serif; font-size:50px; color:#3a3f46; opacity:0; filter:blur(6px); white-space:nowrap; }
+  .print { position:absolute; left:600px; top:470px; width:420px; height:520px; background:#fff; border:1px solid #cfcac0; box-shadow:0 20px 50px rgb(0 0 0 / .4); transform:rotate(-7deg); opacity:0; display:grid; grid-template-rows:1fr auto; padding:24px; box-sizing:border-box; }
+  .print img { width:100%; height:100%; object-fit:cover; filter:sepia(0.15) contrast(0.9) saturate(.85); }
   .print .cap { font-size:24px; color:#6b665c; margin-top:16px; }
   .say { position:absolute; left:1040px; top:200px; width:800px; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:60px; line-height:1.5; opacity:0; }
-  .h { position:absolute; left:1040px; top:520px; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:150px; font-weight:700; opacity:0; white-space:nowrap; }
-  .h .q { color:#ff5a6e; display:inline-block; transform-origin:50% 60%; }
-  .intro { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-family:"IPAMincho","IPAPMincho",serif; font-size:92px; opacity:0; letter-spacing:.06em; }
 </style></head><body>
+<canvas id="cv" width="1920" height="1080"></canvas>
 <div class="intro" id="intro">もし、帰ってこなかったら。</div>
-<div class="sheet" id="sheet"><div class="line" style="top:140px"></div><div class="line" style="top:300px"></div><div class="line" style="top:460px"></div><div class="line" style="top:620px"></div><div class="line" style="top:780px"></div></div>
-<div class="print" id="print"><div class="ph">デイサービスの<br>行事写真<br>（プリント）</div><div class="cap">手元にあった、1枚</div></div>
+<div class="sheet" id="sheet"><div class="line" style="top:140px"></div><div class="line" style="top:300px"></div><div class="line" style="top:460px"></div><div class="line" style="top:620px"></div><div class="line" style="top:780px"></div>
+  <div class="ink" id="i1" style="top:78px">身長 ・・・・・・ ？ cm</div><div class="ink" id="i2" style="top:238px">靴のサイズ ・・・ ？ cm</div><div class="ink" id="i3" style="top:398px">今日の服装 ・・・ ？</div><div class="vig" id="vig"></div></div>
+<div class="print" id="print"><img src="/tools/demo-video/out/ui/imoni.jpg"><div class="cap">手元にあった、1枚（デイのお便り）</div></div>
 <div class="say" id="say">手元の写真は、<br>デイのプリント1枚。</div>
-<div class="h" id="h">身長　<span class="q" id="q">？</span>cm</div>
 <script>
   window.DURATION = 16.8;
   const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
+  // 霧の粒：ランダムな位置から 1.35 秒で文字の帯へ吸い寄せられる
+  let R = 1; const rnd = () => { R = (R * 16807) % 2147483647; return R / 2147483647; };
+  const P = Array.from({ length: 900 }, () => ({ x: 200 + rnd() * 1520, y: 200 + rnd() * 680, tx: 420 + rnd() * 1080, ty: 500 + (rnd() - 0.5) * 90, r: 1.5 + rnd() * 3, ph: rnd() * 6.28, sp: 0.6 + rnd() }));
+  const cv = $("cv"), ctx = cv.getContext("2d");
   window.render = (t) => {
-    $("intro").style.opacity = String(ease((t - 0.5) / 0.8) * (1 - ease((t - 4.6) / 0.6)));
-    const a = ease((t - 5.2) / 0.9); $("sheet").style.opacity = String(a); $("sheet").style.transform = `translateY(${(1 - a) * 40}px)`;          // 「まとめたものを作ろう」→ 白い用紙
-    const b = ease((t - 9.5) / 0.6); $("print").style.opacity = String(b); $("print").style.transform = `rotate(${-7 - (1 - b) * 10}deg) translateY(${(1 - b) * -120}px)`;  // 「でも手元の写真は」→ プリント1枚が落ちてくる
-    $("say").style.opacity = String(ease((t - 12.6) / 0.6));                                                                                      // 「デイのプリントだけ」
-    const c = ease((t - 14.6) / 0.5); $("h").style.opacity = String(c);                                                                           // 「身長も分かりませんでした」
-    const p = t > 14.6 ? 1 + 0.25 * Math.sin(Math.min(Math.PI, (t - 14.6) * 2.4)) : 1; $("q").style.transform = `scale(${p})`;
+    ctx.clearRect(0, 0, 1920, 1080);
+    const g = clamp((t - 0.4) / 1.35), gather = ease(g); const vis = ease((t - 0.1) / 0.5) * (1 - ease((t - 2.2) / 0.5));
+    if (vis > 0) { ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.75)";
+      for (const p of P) { const wob = (1 - gather) * 10; const x = p.x + (p.tx - p.x) * gather + Math.sin(t * 3 * p.sp + p.ph) * wob, y = p.y + (p.ty - p.y) * gather + Math.cos(t * 2.4 * p.sp + p.ph) * wob;
+        ctx.globalAlpha = vis * (0.35 + 0.65 * rnd()); ctx.beginPath(); ctx.arc(x, y, p.r * (1 - 0.5 * gather), 0, 6.28); ctx.fill(); } ctx.restore(); R = 1; }
+    const f = ease((t - 1.55) / 0.5); $("intro").style.opacity = String(f * (1 - ease((t - 4.6) / 0.6))); $("intro").style.filter = `blur(${(1 - f) * 10}px)`;
+    const a = ease((t - 5.2) / 0.9); $("sheet").style.opacity = String(a); $("sheet").style.transform = `translateY(${(1 - a) * 40}px)`;
+    $("vig").style.opacity = String(ease((t - 6.0) / 2.0));
+    [["i1", 6.2], ["i2", 7.0], ["i3", 7.8]].forEach(([id, t0]) => { const u = ease((t - t0) / 1.4); const e = $(id); e.style.opacity = String(u * 0.85); e.style.filter = `blur(${6 - 4.8 * u}px)`; e.style.transform = `translate(${Math.sin(t * 2.1 + t0) * 1.5}px, ${Math.cos(t * 1.7 + t0) * 1.2}px)`; });
+    const red = ease((t - 14.6) / 0.5); for (const id of ["i1", "i2"]) { const e = $(id); e.style.color = red > 0 ? `rgb(${58 + (184 - 58) * red}, ${63 + (51 - 63) * red}, ${70 + (42 - 70) * red})` : "#3a3f46"; e.style.opacity = String(0.85 + 0.15 * red); e.style.filter = `blur(${1.2 - 0.9 * red}px)`; }
+    const b = ease((t - 9.5) / 0.6); $("print").style.opacity = String(b); $("print").style.transform = `rotate(${-7 - (1 - b) * 10}deg) translateY(${(1 - b) * -120}px)`;
+    $("say").style.opacity = String(ease((t - 12.6) / 0.6));
   };
-  window.render(0); window.ready = true;
+  const im = document.querySelector(".print img"); if (im.complete) window.ready = true; else im.onload = () => { window.ready = true; }; window.render(0);
 </script></body></html>

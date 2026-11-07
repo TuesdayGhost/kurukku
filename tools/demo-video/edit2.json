@@ -387,14 +387,26 @@
    "src": "insert:s6-paper",
    "fit": "cover",
    "dur": 11.0,
-   "xf": 0.5
+   "xf": 0.5,
+   "voice": [
+    [
+     "N6b",
+     0.4
+    ]
+   ]
   },
   {
    "name": "6d こんな出来事が、こんな記事に",
    "src": "insert:s6-compare",
    "fit": "cover",
    "dur": 11.0,
-   "xf": 0.6
+   "xf": 0.6,
+   "voice": [
+    [
+     "N6c",
+     0.5
+    ]
+   ]
   },
   {
    "name": "7a Claude Code と仕様書（N7）",
