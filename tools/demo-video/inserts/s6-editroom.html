@@ -11,15 +11,29 @@
   .cols { display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-top:24px; }
   .cap { position:absolute; left:120px; bottom:70px; font-size:40px; color:var(--muted); opacity:0; }
   .cap b { color:var(--accent); }
+  .stats { position:absolute; left:120px; top:160px; width:860px; height:720px; background:#fbfaf6; border:4px solid #141414; padding:24px 28px; box-sizing:border-box; opacity:0; transform:translateY(20px); }
+  .stats .mast { display:flex; align-items:baseline; gap:18px; border-bottom:5px double #141414; padding-bottom:8px; }
+  .stats .mast .t { font-size:34px; font-weight:700; background:var(--red); color:#fff; padding:0 14px; letter-spacing:.15em; }
+  .stats .mast .s { font-size:24px; }
+  .tiles { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:18px; }
+  .tile { border:3px solid #141414; background:#fff; padding:12px 8px 10px; text-align:center; display:grid; justify-items:center; gap:2px; opacity:0; }
+  .num { font-size:54px; font-weight:700; color:var(--red); line-height:1.1; font-variant-numeric:tabular-nums; }
+  .num small { font-size:22px; color:#141414; margin-left:2px; }
+  .lab { font-size:24px; font-weight:700; } .who { font-size:18px; color:#555; }
+  .snote { position:absolute; left:28px; bottom:14px; font-size:18px; color:#333; }
 </style></head><body>
 <div class="env" id="e1" style="left:300px; top:380px"></div><div class="env" id="e2" style="left:460px; top:330px"></div><div class="env" id="e3" style="left:620px; top:400px"></div>
 <div class="pigeon" id="pg"><svg viewBox="36 60 186 146" style="width:100%;height:100%"><path d="M44 150L82.9 107.97A56 56 0 0 1 131.5 90.5A16 16 0 0 0 148.99 79.19A24 24 0 0 1 195.48 81.01L213.08 94.73L191.42 100.11A24 24 0 0 1 183.7 106.96A16 16 0 0 0 176.5 126.5A56 56 0 0 1 98.39 195.8L56 174Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
   <circle cx="178" cy="81" r="6.5" style="fill: var(--pigeon-bg, #fff)"/>
   <path d="M90 142A34 34 0 0 1 130 112.5" fill="none" style="stroke: var(--pigeon-bg, #fff)" stroke-width="9" stroke-linecap="round"/></svg></div>
 <div class="room" id="room"><div class="sign">Claude 編集室</div><div class="desk" id="desk"><div class="line red" id="h"></div><div class="line" id="s" style="height:30px"></div><div class="cols"><div><div class="line" id="c1"></div><div class="line" id="c2"></div><div class="line" id="c3"></div><div class="line" id="c4"></div></div><div><div class="line" id="c5"></div><div class="line" id="c6"></div><div class="line" id="c7"></div><div class="line" id="c8"></div></div></div></div></div>
+<div class="stats" id="stats"><div class="mast"><span class="t">鳩月報</span><span class="s">2026年10月号　今月の記録（記録から集計）</span></div><div class="tiles" id="tiles"></div><div class="snote">「予定」は予定の回数で、実際に出かけた回数ではありません。</div></div>
 <div class="cap" id="cap">メモと集計から、<b>見出しと記事</b>に</div>
 <script>
   window.DURATION = 8.5;
+  const TILES = [[31, "回", "朝ごはん", "お父さん・予定"], [31, "回", "お薬", "お父さん・予定"], [31, "回", "夕ごはん", "お父さん・予定"], [9, "回", "デイ", "お父さん・予定"], [21, "回", "仕事", "はと子・予定"], [4, "回", "買い物", "お母さん・予定"], [42, "回", "はとやまがつつかれた", ""], [5, "件", "ひとこと・写真", ""], [1300, "time", "いちばん遅い戻り", "はと子・予定"]];
+  const nums = []; const tbox = document.getElementById("tiles");
+  for (const [n, unit, lab, who] of TILES) { const d = document.createElement("div"); d.className = "tile"; d.innerHTML = `<div class="num"><span></span><small>${unit === "time" ? "" : unit}</small></div><div class="lab">${lab}</div><div class="who">${who}</div>`; tbox.append(d); nums.push([d, d.querySelector(".num span"), n, unit]); }
   const clamp = (x) => Math.max(0, Math.min(1, x)); const ease = (x) => 1 - Math.pow(1 - clamp(x), 3); const $ = (id) => document.getElementById(id);
   const room = { x: 1920 - 140 - 620, y: 160 };
   window.render = (t) => {
@@ -34,6 +48,8 @@
     $("h").style.width = `${ease((t - 4.2) / 1.0) * 100}%`; $("s").style.width = `${ease((t - 5.0) / 0.6) * 70}%`;
     for (let i = 1; i <= 8; i++) $("c" + i).style.width = `${ease((t - 5.3 - i * 0.22) / 0.5) * (80 + (i * 37) % 20)}%`;
     $("cap").style.opacity = String(ease((t - 5.6) / 0.6));
+    const sa = ease((t - 4.0) / 0.5); $("stats").style.opacity = String(sa); $("stats").style.transform = `translateY(${(1 - sa) * 20}px)`;
+    nums.forEach(([d, el, n, unit], i) => { const u = ease((t - 4.4 - i * 0.12) / 1.4); const v = Math.round(n * u); el.textContent = unit === "time" ? `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}` : String(v); d.style.opacity = String(clamp((t - 4.3 - i * 0.12) / 0.3)); });
   };
   window.render(0); window.ready = true;
 </script></body></html>
